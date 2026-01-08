@@ -4,7 +4,7 @@ import { LessonView } from './components/LessonView';
 import { Profile } from './components/Profile';
 import { Shop } from './components/Shop';
 import { AchievementNotification } from './components/AchievementNotification';
-import { UserState, Lesson, SUPPORTED_LANGUAGES, Difficulty, Achievement, LessonResult } from './types';
+import { UserState, Lesson, SUPPORTED_LANGUAGES, Difficulty, Achievement, LessonResult, LanguageConfig } from './types';
 import { generateLessonContent } from './services/geminiService';
 import { 
   loadUserState, 
@@ -33,7 +33,8 @@ const INITIAL_USER_STATE: UserState = {
   topicLevels: {},
   streakFreezeActive: false,
   perfectLessonCount: 0,
-  fastLessonCount: 0
+  fastLessonCount: 0,
+  customLanguages: []
 };
 
 const App: React.FC = () => {
@@ -61,6 +62,8 @@ const App: React.FC = () => {
     // Migration: ensure new counters exist
     if (typeof stateToUse.perfectLessonCount === 'undefined') stateToUse.perfectLessonCount = 0;
     if (typeof stateToUse.fastLessonCount === 'undefined') stateToUse.fastLessonCount = 0;
+    // Migration: ensure customLanguages exists
+    if (!stateToUse.customLanguages) stateToUse.customLanguages = [];
 
     // Date Check for Daily XP, Streak, and Streak Freeze
     const today = new Date().toDateString();
@@ -122,11 +125,16 @@ const App: React.FC = () => {
     return `${topicId}-${difficulty}`;
   };
 
+  const getAllLanguages = () => {
+    return [...SUPPORTED_LANGUAGES, ...(userState.customLanguages || [])];
+  };
+
   const startLesson = async (topicId: string, topicName: string) => {
     setCurrentScreen('LOADING');
     
     const langCode = userState.currentLanguage;
-    const langName = SUPPORTED_LANGUAGES.find(l => l.code === langCode)?.name || 'Spanish';
+    const allLangs = getAllLanguages();
+    const langName = allLangs.find(l => l.code === langCode)?.name || 'Spanish';
     const difficulty = userState.difficulty;
     const compositeKey = getCompositeKey(topicId, difficulty);
 
@@ -175,7 +183,8 @@ const App: React.FC = () => {
     
     setDownloadingTopic(topicId);
     const langCode = userState.currentLanguage;
-    const langName = SUPPORTED_LANGUAGES.find(l => l.code === langCode)?.name || 'Spanish';
+    const allLangs = getAllLanguages();
+    const langName = allLangs.find(l => l.code === langCode)?.name || 'Spanish';
     const difficulty = userState.difficulty;
     const compositeKey = getCompositeKey(topicId, difficulty);
 
@@ -305,6 +314,15 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleImportLanguage = (language: LanguageConfig) => {
+    setUserState(prev => ({
+        ...prev,
+        customLanguages: [...(prev.customLanguages || []), language],
+        currentLanguage: language.code
+    }));
+    alert(`Successfully imported ${language.name}!`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {isOffline && currentScreen === 'DASHBOARD' && (
@@ -327,6 +345,7 @@ const App: React.FC = () => {
           onOpenShop={handleOpenShop}
           downloadingId={downloadingTopic}
           isOffline={isOffline}
+          onImportLanguage={handleImportLanguage}
         />
       )}
 

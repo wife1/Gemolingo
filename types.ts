@@ -1,4 +1,5 @@
 
+
 export enum ExerciseType {
   TRANSLATE_TO_TARGET = 'TRANSLATE_TO_TARGET',
   TRANSLATE_TO_SOURCE = 'TRANSLATE_TO_SOURCE',
@@ -13,6 +14,7 @@ export interface Exercise {
   correctAnswer: string;
   options?: string[]; // For multiple choice or word bank
   translation: string; // The translation of the prompt (for context)
+  explanation?: string; // Brief grammar/vocab note
 }
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -67,6 +69,7 @@ export interface UserState {
   streakFreezeActive: boolean;
   perfectLessonCount: number; // For Challenge Achievements
   fastLessonCount: number;    // For Challenge Achievements
+  customLanguages: LanguageConfig[]; // User imported languages
 }
 
 export type ScreenState = 'DASHBOARD' | 'LESSON' | 'PROFILE' | 'SHOP';
@@ -83,4 +86,15 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
   { code: 'de', name: 'German', flag: '🇩🇪' },
   { code: 'it', name: 'Italian', flag: '🇮🇹' },
   { code: 'jp', name: 'Japanese', flag: '🇯🇵' },
+  { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+  { code: 'pt', name: 'Portuguese', flag: '🇧🇷' },
+  { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+  { code: 'nl', name: 'Dutch', flag: '🇳🇱' },
+  { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+  { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+  { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'tr', name: 'Turkish', flag: '🇹🇷' },
+  { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
+  { code: 'el', name: 'Greek', flag: '🇬🇷' },
+  { code: 'pl', name: 'Polish', flag: '🇵🇱' },
 ];

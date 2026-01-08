@@ -47,9 +47,10 @@ export const generateLessonContent = async (
                 items: { type: Type.STRING },
                 description: "Array of words for the word bank or multiple choice options. Must include the correct words and some wrong ones."
               },
-              translation: { type: Type.STRING, description: "English translation of the prompt/answer for context" }
+              translation: { type: Type.STRING, description: "English translation of the prompt/answer for context" },
+              explanation: { type: Type.STRING, description: "Brief grammar or vocabulary explanation for the correct answer to help the student learn." }
             },
-            required: ["id", "type", "prompt", "correctAnswer", "options", "translation"]
+            required: ["id", "type", "prompt", "correctAnswer", "options", "translation", "explanation"]
           }
         }
       }
@@ -67,7 +68,8 @@ export const generateLessonContent = async (
         prompt: "Hello",
         correctAnswer: "Hola",
         options: ["Hola", "Adios", "Gato", "Perro"],
-        translation: "Hello"
+        translation: "Hello",
+        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish."
       }
     ];
   }

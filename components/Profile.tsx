@@ -103,6 +103,9 @@ function getProgress(ach: any, state: UserState) {
     case 'LESSONS_COMPLETED': return state.completedLessons.length;
     case 'STREAK_DAYS': return state.streak;
     case 'XP_EARNED': return state.xp;
+    case 'TOPICS_MASTERED': return Object.values(state.topicLevels || {}).filter(l => (l as number) >= 5).length;
+    case 'PERFECT_LESSONS': return state.perfectLessonCount || 0;
+    case 'SPEEDRUN_LESSONS': return state.fastLessonCount || 0;
     default: return 0;
   }
 }

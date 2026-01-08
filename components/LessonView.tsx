@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -94,6 +94,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [isLessonComplete, setIsLessonComplete] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [mistakes, setMistakes] = useState(0);
+  const [showExplanation, setShowExplanation] = useState(false);
+  
+  // Custom word bank state
+  const [customOptions, setCustomOptions] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState("");
   
   // Timer State
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME_LIMIT);
@@ -124,6 +129,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
   useEffect(() => {
     setSelectedOption(null);
     setSelectedWords([]);
+    setCustomOptions([]);
+    setCustomInput("");
+    setShowExplanation(false);
     if (status !== 'TIME_UP') {
       setStatus('IDLE');
     }
@@ -134,6 +142,22 @@ export const LessonView: React.FC<LessonViewProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       
+      // If modal is open, only allow Escape or Enter to close
+      if (showExplanation) {
+        if (e.key === 'Escape' || e.key === 'Enter') {
+            setShowExplanation(false);
+        }
+        return;
+      }
+
+      // Ignore Enter key if user is typing in an input field (to allow them to submit the word instead of the lesson)
+      if (e.target instanceof HTMLInputElement) {
+        if (e.key === 'Escape') {
+            (e.target as HTMLInputElement).blur();
+        }
+        return;
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault();
         if (isLessonComplete) {
@@ -160,7 +184,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise]);
+  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation]);
 
   // Handle Lesson Completion Celebration
   useEffect(() => {
@@ -277,17 +301,31 @@ export const LessonView: React.FC<LessonViewProps> = ({
       setSelectedWords(prev => [...prev, word]);
   };
 
+  const handleCustomInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (customInput.trim()) {
+            setCustomOptions(prev => [...prev, customInput.trim()]);
+            setCustomInput("");
+        }
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Combine standard options with user-added options
+  const allOptions = [...(currentExercise.options || []), ...customOptions];
+
   // Helper to determine if a word in the bank should be disabled (used)
   // This supports duplicate words correctly.
   const isWordUsed = (word: string, indexInOptions: number) => {
     // How many times does this word appear in the options BEFORE this index?
-    const previousOccurrencesInOptions = (currentExercise.options || [])
+    const previousOccurrencesInOptions = allOptions
       .slice(0, indexInOptions)
       .filter(w => w === word).length;
 
@@ -478,9 +516,28 @@ export const LessonView: React.FC<LessonViewProps> = ({
                   ))}
                </div>
 
+               {/* Custom Word Input */}
+               {status === 'IDLE' && (
+                   <div className="mb-4 flex items-center gap-2">
+                       <div className="relative flex-1">
+                            <input 
+                                type="text"
+                                value={customInput}
+                                onChange={(e) => setCustomInput(e.target.value)}
+                                onKeyDown={handleCustomInputKeyDown}
+                                placeholder="Type to add a word..."
+                                className="w-full pl-4 pr-10 py-2 border-2 border-gray-200 rounded-xl focus:border-duo-blue focus:outline-none transition-colors"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded">
+                                ENTER
+                            </div>
+                       </div>
+                   </div>
+               )}
+
                {/* Word Bank */}
                <div className="flex flex-wrap justify-center gap-2">
-                 {currentExercise.options?.map((word, idx) => {
+                 {allOptions.map((word, idx) => {
                    // Improved logic to support duplicate words
                    const isDisabled = isWordUsed(word, idx);
                    return (
@@ -506,12 +563,36 @@ export const LessonView: React.FC<LessonViewProps> = ({
         </div>
       </div>
 
+      {/* Explanation Modal */}
+      {showExplanation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-pop-in">
+             <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                <button onClick={() => setShowExplanation(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                  <X size={24} />
+                </button>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Explanation</h3>
+                <div className="space-y-4">
+                   <div>
+                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Translation</div>
+                     <div className="text-lg font-medium text-gray-700">{currentExercise.translation}</div>
+                   </div>
+                   {currentExercise.explanation && (
+                     <div>
+                       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Why?</div>
+                       <div className="text-gray-600 leading-relaxed">{currentExercise.explanation}</div>
+                     </div>
+                   )}
+                </div>
+                <Button fullWidth className="mt-6" onClick={() => setShowExplanation(false)}>Got it</Button>
+             </div>
+        </div>
+      )}
+
       {/* Footer / Feedback Sheet */}
       <div className={`
         fixed bottom-0 left-0 right-0 p-4 md:p-8 transition-colors duration-300 border-t-2 z-20
         ${status === 'CORRECT' ? 'bg-green-100 border-green-200' : ''}
         ${status === 'WRONG' ? 'bg-red-100 border-red-200' : ''}
-        ${status === 'TIME_UP' ? 'bg-red-100 border-red-200' : ''}
         ${status === 'IDLE' ? 'bg-white border-gray-200' : ''}
       `}>
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
@@ -541,19 +622,31 @@ export const LessonView: React.FC<LessonViewProps> = ({
            )}
 
            {status === 'WRONG' && (
-             <div className="flex items-center gap-4 animate-slide-up">
-               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-duo-red shadow-sm">
-                 <X size={32} strokeWidth={4} />
+             <div className="flex flex-row items-center gap-4 animate-slide-up flex-1 min-w-0">
+               <div className="hidden sm:flex w-14 h-14 bg-white rounded-full items-center justify-center text-duo-red shadow-sm shrink-0">
+                 <X size={36} strokeWidth={4} />
                </div>
-               <div>
-                 <div className="font-bold text-duo-red-dark text-xl">Correct Answer:</div>
-                 <div className="text-duo-red">{currentExercise.correctAnswer}</div>
+               <div className="flex-1 flex flex-col justify-center min-w-0">
+                 <div className="text-xs md:text-sm font-bold text-duo-red-dark uppercase mb-1 tracking-wider">Correct Answer:</div>
+                 <div className="text-sm md:text-lg font-black text-duo-red break-words leading-tight bg-white/40 p-2 rounded-lg border border-duo-red/10">
+                    {currentExercise.correctAnswer}
+                 </div>
                </div>
+               {(currentExercise.translation || currentExercise.explanation) && (
+                   <button
+                     onClick={() => setShowExplanation(true)}
+                     className="p-3 bg-white hover:bg-red-50 rounded-xl text-duo-red-dark border-2 border-duo-red/20 transition-colors shrink-0 shadow-sm flex flex-col items-center justify-center gap-1 h-full"
+                     title="Explanation"
+                   >
+                     <BookOpen size={20} />
+                     <span className="text-[10px] font-extrabold uppercase hidden md:block">Explain</span>
+                   </button>
+               )}
              </div>
            )}
 
            <Button 
-             variant={status === 'WRONG' || status === 'TIME_UP' ? 'danger' : 'primary'}
+             variant={status === 'WRONG' ? 'danger' : 'primary'}
              size="lg"
              className="min-w-[150px]"
              onClick={status === 'IDLE' ? handleCheck : handleContinue}
