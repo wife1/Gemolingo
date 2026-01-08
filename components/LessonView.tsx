@@ -491,11 +491,24 @@ export const LessonView: React.FC<LessonViewProps> = ({
                   onClick={() => status === 'IDLE' && setSelectedOption(opt)}
                   className={`
                     ${status !== 'IDLE' ? 'pointer-events-none' : ''} 
-                    relative
+                    relative flex items-center p-6 min-h-[80px]
                   `}
                 >
-                  <span className="absolute top-2 left-2 text-xs font-bold text-gray-300 border border-gray-200 rounded px-1.5">{idx + 1}</span>
-                  {opt}
+                   {/* Keyboard shortcut hint and selected indicator */}
+                  <span className={`
+                     absolute top-3 left-3 text-[10px] font-bold border rounded px-1.5 py-0.5 transition-colors
+                     ${selectedOption === opt 
+                        ? 'text-duo-blue border-duo-blue bg-blue-50' 
+                        : 'text-gray-300 border-gray-200'
+                     }
+                  `}>
+                    {idx + 1}
+                  </span>
+                  
+                  {/* Option Text */}
+                  <span className="w-full text-center text-lg font-bold">
+                    {opt}
+                  </span>
                 </Card>
               ))}
             </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -31,6 +31,16 @@ const TOPICS = [
   { id: 'weather', name: 'Weather', icon: '☀️', color: 'bg-orange-500' },
   { id: 'emotions', name: 'Emotions', icon: '😊', color: 'bg-teal-500' },
   { id: 'shopping', name: 'Shopping', icon: '🛍️', color: 'bg-rose-500' },
+  { id: 'animals', name: 'Animals', icon: '🐶', color: 'bg-green-600' },
+  { id: 'home', name: 'Home', icon: '🏠', color: 'bg-orange-600' },
+  { id: 'school', name: 'School', icon: '🏫', color: 'bg-blue-600' },
+  { id: 'health', name: 'Health', icon: '🏥', color: 'bg-red-600' },
+  { id: 'sports', name: 'Sports', icon: '⚽', color: 'bg-yellow-600' },
+  { id: 'nature', name: 'Nature', icon: '🌳', color: 'bg-emerald-600' },
+  { id: 'tech', name: 'Technology', icon: '💻', color: 'bg-indigo-600' },
+  { id: 'time', name: 'Time & Dates', icon: '⏰', color: 'bg-purple-600' },
+  { id: 'culture', name: 'Arts & Culture', icon: '🎭', color: 'bg-pink-600' },
+  { id: 'numbers', name: 'Numbers', icon: '🔢', color: 'bg-cyan-600' },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -51,6 +61,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [focusedTopicIndex, setFocusedTopicIndex] = useState(0);
   const topicRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [showImportHelp, setShowImportHelp] = useState(false);
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Filtering and Sorting State
   const [filter, setFilter] = useState<'ALL' | 'IN_PROGRESS' | 'MASTERED'>('ALL');
@@ -80,6 +92,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Apply Filter and Sort
   let displayedTopics = [...topicsWithMeta];
 
+  if (searchQuery.trim()) {
+    displayedTopics = displayedTopics.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+  }
+
   if (filter === 'IN_PROGRESS') {
       displayedTopics = displayedTopics.filter(t => t.level > 0 && !t.isMastered);
   } else if (filter === 'MASTERED') {
@@ -92,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       displayedTopics.sort((a, b) => b.level - a.level);
   }
 
-  const isDefaultView = filter === 'ALL' && sort === 'DEFAULT';
+  const isDefaultView = filter === 'ALL' && sort === 'DEFAULT' && !searchQuery;
 
   // On mount, auto-focus the first incomplete lesson (only in default view)
   useEffect(() => {
@@ -109,7 +125,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Reset focus when list changes
   useEffect(() => {
       setFocusedTopicIndex(0);
-  }, [filter, sort]);
+  }, [filter, sort, searchQuery]);
 
   // Keyboard Navigation
   useEffect(() => {
@@ -122,6 +138,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         e.preventDefault();
         setFocusedTopicIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
+        if (showLanguageSelector || showImportHelp) return;
         e.preventDefault();
         const topic = displayedTopics[focusedTopicIndex];
         if (topic) {
@@ -132,7 +149,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedTopicIndex, onStartLesson, displayedTopics]);
+  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp]);
 
   // Auto-scroll to focused topic
   useEffect(() => {
@@ -179,6 +196,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     return;
                 }
                 onImportLanguage(json);
+                setShowLanguageSelector(false);
             } else {
                 alert("Invalid JSON format. Required: code, name, flag");
             }
@@ -196,43 +214,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Top Bar */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b-2 border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
-           <button className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-lg transition-colors group relative">
+           {/* Language Selector Trigger */}
+           <button 
+             onClick={() => setShowLanguageSelector(true)}
+             className="flex items-center gap-1 hover:bg-gray-100 p-2 rounded-xl transition-all active:scale-95 border-2 border-transparent hover:border-gray-200"
+             title="Select Language"
+           >
              <span className="text-2xl">{currentLangConfig?.flag}</span>
-             {/* Simple Language Dropdown Simulator */}
-             <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl p-2 hidden group-focus-within:block w-56 z-50 max-h-80 overflow-y-auto">
-                {allLanguages.map(lang => (
-                  <div 
-                    key={lang.code}
-                    onClick={() => onChangeLanguage(lang.code)}
-                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 ${userState.currentLanguage === lang.code ? 'bg-blue-50' : ''}`}
-                  >
-                    <span>{lang.flag}</span>
-                    <span className="font-bold text-gray-700">{lang.name}</span>
-                    {userState.currentLanguage === lang.code && <Check size={16} className="text-duo-green ml-auto"/>}
-                  </div>
-                ))}
-                
-                {/* Import Section */}
-                <div className="sticky bottom-0 bg-white border-t-2 border-gray-100 mt-1 pt-1 grid grid-cols-[1fr,auto] gap-1">
-                    <label className="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-50 text-duo-blue font-bold transition-colors">
-                        <Upload size={16} />
-                        <span className="text-sm">Import JSON</span>
-                        <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
-                    </label>
-                    <button 
-                         onClick={(e) => {
-                             e.preventDefault(); 
-                             e.stopPropagation();
-                             setShowImportHelp(true);
-                         }}
-                         className="p-2 text-gray-400 hover:text-duo-blue hover:bg-blue-50 rounded-lg transition-colors"
-                         title="Help"
-                         type="button"
-                    >
-                        <HelpCircle size={18} />
-                    </button>
-                </div>
-             </div>
            </button>
 
            {/* Difficulty Selector */}
@@ -295,6 +283,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Filter/Sort Bar */}
       <div className="px-4 py-2 flex items-center gap-2 bg-gray-50 border-b border-gray-200 overflow-x-auto">
+         {/* Search Input */}
+         <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1 shadow-sm border border-gray-100 min-w-[140px]">
+             <Search size={14} className="text-gray-400" />
+             <input 
+               type="text"
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               placeholder="Search..."
+               className="text-xs font-bold text-gray-600 bg-transparent outline-none w-full placeholder-gray-300"
+             />
+             {searchQuery && (
+               <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                 <X size={12} />
+               </button>
+             )}
+         </div>
+
          <div className="flex items-center gap-2 bg-white rounded-lg px-2 py-1 shadow-sm border border-gray-100">
              <Filter size={14} className="text-gray-400" />
              <select 
@@ -387,7 +392,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                <div key={topic.id} className={`relative group ${offset} transition-transform duration-300`}>
                  {/* Progress Ring Wrapper */}
                  <div className="relative flex items-center justify-center">
-                    {/* Background Ring - Only show ring in default/path view for aesthetics, or keep it always? Keeping it. */}
+                    {/* Background Ring */}
                     {isUnlocked && (
                       <svg className="absolute w-24 h-24 -rotate-90 pointer-events-none" style={{ zIndex: 5 }}>
                         <circle
@@ -500,6 +505,76 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <Trophy size={28} />
         </button>
       </div>
+
+      {/* Language Selector Modal */}
+      {showLanguageSelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Globe size={20} className="text-duo-blue" />
+                Select Language
+              </h3>
+              <button 
+                onClick={() => setShowLanguageSelector(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">My Courses</div>
+              {allLanguages.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    onChangeLanguage(lang.code);
+                    setShowLanguageSelector(false);
+                  }}
+                  className={`
+                    w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                    ${userState.currentLanguage === lang.code 
+                      ? 'border-duo-blue bg-blue-50 text-duo-blue' 
+                      : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <span className="text-4xl">{lang.flag}</span>
+                  <div className="flex-1 text-left">
+                    <div className="font-bold text-lg">{lang.name}</div>
+                    {userState.currentLanguage === lang.code && <div className="text-xs font-bold uppercase">Active</div>}
+                  </div>
+                  {userState.currentLanguage === lang.code && <Check size={24} strokeWidth={3} />}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 bg-gray-50">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-2 text-gray-500">
+                    <FileJson size={20} />
+                    <span className="text-sm font-bold">Custom Language</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <button 
+                         onClick={() => setShowImportHelp(true)}
+                         className="p-2 text-gray-400 hover:text-duo-blue hover:bg-blue-50 rounded-lg transition-colors"
+                         title="Help"
+                    >
+                        <HelpCircle size={20} />
+                    </button>
+                    <label className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 hover:border-duo-blue text-duo-blue rounded-xl cursor-pointer font-bold text-sm transition-colors">
+                        <Upload size={16} />
+                        Import
+                        <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                 </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Import Help Modal */}
       {showImportHelp && (
