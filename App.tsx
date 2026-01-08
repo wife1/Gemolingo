@@ -267,10 +267,9 @@ const App: React.FC = () => {
   };
 
   const handleExitLesson = () => {
-    if (window.confirm("Are you sure you want to quit? You'll lose your progress for this lesson.")) {
-      setCurrentScreen('DASHBOARD');
-      setCurrentLesson(null);
-    }
+    // Logic moved to LessonView to support custom modal
+    setCurrentScreen('DASHBOARD');
+    setCurrentLesson(null);
   };
 
   const handleLoseHeart = () => {

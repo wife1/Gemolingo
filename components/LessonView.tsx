@@ -95,6 +95,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [correctCount, setCorrectCount] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   
   // Custom word bank state
   const [customOptions, setCustomOptions] = useState<string[]>([]);
@@ -149,6 +150,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
         }
         return;
       }
+      
+      if (showExitModal) {
+         if (e.key === 'Escape') setShowExitModal(false);
+         return;
+      }
 
       // Ignore Enter key if user is typing in an input field (to allow them to submit the word instead of the lesson)
       if (e.target instanceof HTMLInputElement) {
@@ -184,7 +190,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation]);
+  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation, showExitModal]);
 
   // Handle Lesson Completion Celebration
   useEffect(() => {
@@ -419,7 +425,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
     <div className={`flex flex-col h-screen max-w-2xl mx-auto bg-white ${timerEnabled ? 'border-x-4 border-yellow-400' : ''}`}>
       {/* Header */}
       <div className="px-4 py-6 flex items-center gap-4">
-        <button onClick={onExit} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => setShowExitModal(true)} className="text-gray-400 hover:text-gray-600">
           <ArrowLeft size={24} />
         </button>
         <ProgressBar progress={progress} />
@@ -584,6 +590,35 @@ export const LessonView: React.FC<LessonViewProps> = ({
                    )}
                 </div>
                 <Button fullWidth className="mt-6" onClick={() => setShowExplanation(false)}>Got it</Button>
+             </div>
+        </div>
+      )}
+
+      {/* Exit Confirmation Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+             <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Quit Lesson?</h3>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                   You will lose all progress for this lesson if you quit now.
+                </p>
+                <div className="flex gap-4">
+                   <Button 
+                     variant="ghost" 
+                     fullWidth 
+                     onClick={() => setShowExitModal(false)}
+                     className="text-gray-500 hover:text-gray-700"
+                   >
+                     Cancel
+                   </Button>
+                   <Button 
+                     variant="danger" 
+                     fullWidth 
+                     onClick={onExit}
+                   >
+                     Quit
+                   </Button>
+                </div>
              </div>
         </div>
       )}
