@@ -1,0 +1,7 @@
+{
+  "name": "Gemolingo",
+  "description": "A gamified language learning application powered by Gemini. Features dynamic lesson generation, text-to-speech pronunciation, and interactive exercises inspired by popular language apps.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

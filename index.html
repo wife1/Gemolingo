@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemolingo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'duo-green': '#58cc02',
+              'duo-green-dark': '#46a302',
+              'duo-blue': '#1cb0f6',
+              'duo-blue-dark': '#1899d6',
+              'duo-red': '#ff4b4b',
+              'duo-red-dark': '#ea2b2b',
+              'duo-yellow': '#ffc800',
+              'duo-yellow-dark': '#e5b400',
+              'duo-gray': '#e5e5e5',
+              'duo-gray-text': '#afafaf',
+            },
+            fontFamily: {
+              sans: ['ui-rounded', 'SF Pro Rounded', 'system-ui', 'sans-serif'],
+            },
+            keyframes: {
+              'slide-up': {
+                '0%': { transform: 'translateY(100%)' },
+                '100%': { transform: 'translateY(0)' },
+              },
+              'pop-in': {
+                '0%': { transform: 'scale(0.5)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              }
+            },
+            animation: {
+              'slide-up': 'slide-up 0.3s ease-out',
+              'pop-in': 'pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+      body {
+        font-family: 'Nunito', sans-serif;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.2"
+  }
+}
+</script>
+</head>
+  <body class="bg-white text-gray-700">
+    <div id="root"></div>
+  </body>
+</html>
