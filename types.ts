@@ -1,3 +1,4 @@
+
 export enum ExerciseType {
   TRANSLATE_TO_TARGET = 'TRANSLATE_TO_TARGET',
   TRANSLATE_TO_SOURCE = 'TRANSLATE_TO_SOURCE',
@@ -16,7 +17,13 @@ export interface Exercise {
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
-export type AchievementCondition = 'LESSONS_COMPLETED' | 'STREAK_DAYS' | 'XP_EARNED';
+export type AchievementCondition = 
+  | 'LESSONS_COMPLETED' 
+  | 'STREAK_DAYS' 
+  | 'XP_EARNED' 
+  | 'TOPICS_MASTERED' 
+  | 'PERFECT_LESSONS' 
+  | 'SPEEDRUN_LESSONS';
 
 export interface Achievement {
   id: string;
@@ -38,6 +45,12 @@ export interface Lesson {
   difficulty: Difficulty;
 }
 
+export interface LessonResult {
+  xp: number;
+  mistakes: number;
+  timeSeconds: number;
+}
+
 export interface UserState {
   hearts: number;
   xp: number;
@@ -51,9 +64,12 @@ export interface UserState {
   lastActiveDate: string;
   timerEnabled: boolean;
   topicLevels: Record<string, number>; // TopicID -> Level (0-5)
+  streakFreezeActive: boolean;
+  perfectLessonCount: number; // For Challenge Achievements
+  fastLessonCount: number;    // For Challenge Achievements
 }
 
-export type ScreenState = 'DASHBOARD' | 'LESSON' | 'PROFILE';
+export type ScreenState = 'DASHBOARD' | 'LESSON' | 'PROFILE' | 'SHOP';
 
 export interface LanguageConfig {
   code: string;

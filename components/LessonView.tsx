@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Exercise, ExerciseType, Lesson } from '../types';
+import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, ArrowRight, Trophy, Timer, Frown } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
 interface LessonViewProps {
   lesson: Lesson;
-  onComplete: (xp: number) => void;
+  onComplete: (result: LessonResult) => void;
   onExit: () => void;
   onLoseHeart: () => void;
   hearts: number;
@@ -32,9 +32,12 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [status, setStatus] = useState<'IDLE' | 'CORRECT' | 'WRONG' | 'TIME_UP'>('IDLE');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLessonComplete, setIsLessonComplete] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
   
   // Timer State
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME_LIMIT);
+  const startTimeRef = useRef(Date.now());
 
   const currentExercise = lesson.exercises[currentExerciseIndex];
   const progress = (currentExerciseIndex / lesson.exercises.length) * 100;
@@ -42,9 +45,6 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // Timer Logic
   useEffect(() => {
     if (!timerEnabled || isLessonComplete || status === 'TIME_UP') return;
-
-    // Optional: Pause timer during 'CORRECT' or 'WRONG' feedback? 
-    // Usually challenges keep running, but to be fair let's keep running for urgency.
     
     const interval = setInterval(() => {
       setTimeLeft(prev => {
@@ -72,17 +72,15 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // Handle Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if modifier keys are pressed (e.g. Ctrl+R)
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       
       if (e.key === 'Enter') {
         e.preventDefault();
         if (isLessonComplete) {
-           onComplete(15 + (timerEnabled ? 10 : 0)); // Bonus XP for timed
+           handleFinishLesson();
         } else if (status === 'TIME_UP') {
            onExit();
         } else if (status === 'IDLE') {
-           // Only check if we have an answer selected
            if (selectedOption || selectedWords.length > 0) {
              handleCheck();
            }
@@ -90,11 +88,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
            handleContinue();
         }
       } else if (e.key === ' ' && status === 'IDLE') {
-        e.preventDefault(); // Prevent scrolling
-        // Play audio if available
+        e.preventDefault();
         handlePlayAudio(currentExercise.prompt);
       } else if (status === 'IDLE' && currentExercise.type === 'SELECT_MEANING' && currentExercise.options) {
-        // Number keys 1-4 for multiple choice
         const num = parseInt(e.key);
         if (!isNaN(num) && num > 0 && num <= currentExercise.options.length) {
           setSelectedOption(currentExercise.options[num-1]);
@@ -109,7 +105,6 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // Handle Lesson Completion Celebration
   useEffect(() => {
     if (isLessonComplete) {
-      // Fire confetti when lesson is complete
       const duration = 3000;
       const end = Date.now() + duration;
 
@@ -141,8 +136,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const handlePlayAudio = async (text: string) => {
     if (isProcessing) return;
     setIsProcessing(true);
-    // In a real app, we would cache this
-    const buffer = await generateSpeech(text, 'es'); // Defaulting to ES for demo, should use lesson language
+    const buffer = await generateSpeech(text, 'es'); 
     if (buffer) playAudioBuffer(buffer);
     setIsProcessing(false);
   };
@@ -154,24 +148,32 @@ export const LessonView: React.FC<LessonViewProps> = ({
       isCorrect = selectedOption === currentExercise.correctAnswer;
     } else if (currentExercise.type === 'TRANSLATE_TO_TARGET' || currentExercise.type === 'TRANSLATE_TO_SOURCE') {
       const answer = selectedWords.join(' ');
-      // Simple string match - in production needed more fuzzy matching
       isCorrect = answer.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
     }
 
     if (isCorrect) {
       setStatus('CORRECT');
-      // Mini celebration for correct answer
+      setCorrectCount(prev => prev + 1);
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.8 },
         colors: ['#58cc02', '#ffffff']
       });
-      // Play ding sound (simulated logic)
     } else {
       setStatus('WRONG');
+      setMistakes(prev => prev + 1);
       onLoseHeart();
     }
+  };
+
+  const handleSkip = () => {
+    setStatus('WRONG');
+    setMistakes(prev => prev + 1);
+    if (!timerEnabled) {
+      onLoseHeart();
+    }
+    // Note: We do NOT increment correctCount
   };
 
   const handleContinue = () => {
@@ -180,6 +182,26 @@ export const LessonView: React.FC<LessonViewProps> = ({
     } else {
       setIsLessonComplete(true);
     }
+  };
+
+  const handleFinishLesson = () => {
+    // XP Calculation: 
+    // 5 XP for finishing
+    // 2 XP per correct answer
+    // 5 XP Speed Bonus (if timer enabled)
+    const baseXP = 5;
+    const accuracyXP = correctCount * 2;
+    const speedBonus = timerEnabled ? 5 : 0;
+    const totalXP = baseXP + accuracyXP + speedBonus;
+    
+    // Calculate total duration (if timer is enabled use elapsed, otherwise just estimate or 0)
+    const timeTaken = timerEnabled ? (DEFAULT_TIME_LIMIT - timeLeft) : 0;
+
+    onComplete({
+      xp: totalXP,
+      mistakes: mistakes,
+      timeSeconds: timeTaken
+    });
   };
   
   const handleRemoveWord = (word: string, indexToRemove: number) => {
@@ -192,11 +214,25 @@ export const LessonView: React.FC<LessonViewProps> = ({
       setSelectedWords(prev => [...prev, word]);
   };
 
-  // Format time mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Helper to determine if a word in the bank should be disabled (used)
+  // This supports duplicate words correctly.
+  const isWordUsed = (word: string, indexInOptions: number) => {
+    // How many times does this word appear in the options BEFORE this index?
+    const previousOccurrencesInOptions = (currentExercise.options || [])
+      .slice(0, indexInOptions)
+      .filter(w => w === word).length;
+
+    // How many times is this word currently selected?
+    const occurrencesInSelection = selectedWords.filter(w => w === word).length;
+
+    // If we have selected it 2 times, we disable the first 2 instances in the options.
+    return previousOccurrencesInOptions < occurrencesInSelection;
   };
 
   if (status === 'TIME_UP') {
@@ -224,32 +260,43 @@ export const LessonView: React.FC<LessonViewProps> = ({
   }
 
   if (isLessonComplete) {
+    const earnedXP = 5 + (correctCount * 2) + (timerEnabled ? 5 : 0);
+    const isPerfect = mistakes === 0;
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-white p-8 text-center animate-pop-in">
         <div className="mb-8 relative">
-           <div className="absolute inset-0 bg-yellow-200 rounded-full blur-3xl opacity-50 animate-pulse"></div>
-           <Trophy size={120} className="text-duo-yellow relative z-10" fill="currentColor" />
+           <div className={`absolute inset-0 rounded-full blur-3xl opacity-50 animate-pulse ${isPerfect ? 'bg-purple-200' : 'bg-yellow-200'}`}></div>
+           <Trophy size={120} className={`${isPerfect ? 'text-purple-500' : 'text-duo-yellow'} relative z-10`} fill="currentColor" />
         </div>
         
-        <h1 className="text-4xl font-extrabold text-duo-yellow-dark mb-4">Lesson Complete!</h1>
+        <h1 className={`text-4xl font-extrabold mb-4 ${isPerfect ? 'text-purple-600' : 'text-duo-yellow-dark'}`}>
+          {isPerfect ? 'Perfect Lesson!' : 'Lesson Complete!'}
+        </h1>
         
         <div className="flex gap-4 mb-8">
            <div className="bg-orange-100 p-4 rounded-2xl border-2 border-orange-200 min-w-[120px]">
-              <div className="text-sm font-bold text-orange-400 uppercase">XP Earned</div>
-              <div className="text-3xl font-black text-orange-500">+{timerEnabled ? 25 : 15} XP</div>
+              <div className="text-sm font-bold text-orange-400 uppercase">Total XP</div>
+              <div className="text-3xl font-black text-orange-500">+{earnedXP}</div>
            </div>
-           <div className="bg-blue-100 p-4 rounded-2xl border-2 border-blue-200 min-w-[120px]">
-              <div className="text-sm font-bold text-blue-400 uppercase">Speed</div>
-              <div className="text-3xl font-black text-blue-500">
-                {timerEnabled ? formatTime(DEFAULT_TIME_LIMIT - timeLeft) : 'Normal'}
+           <div className="bg-green-100 p-4 rounded-2xl border-2 border-green-200 min-w-[120px]">
+              <div className="text-sm font-bold text-green-400 uppercase">Accuracy</div>
+              <div className="text-3xl font-black text-green-500">
+                {Math.round((correctCount / lesson.exercises.length) * 100)}%
               </div>
            </div>
         </div>
 
+        {isPerfect && (
+          <div className="mb-8 bg-purple-100 text-purple-600 px-4 py-2 rounded-xl font-bold animate-bounce">
+             ✨ Zero Mistakes Bonus Applied!
+          </div>
+        )}
+
         <Button 
           size="lg" 
           fullWidth 
-          onClick={() => onComplete(timerEnabled ? 25 : 15)}
+          onClick={handleFinishLesson}
           className="max-w-xs animate-slide-up"
         >
           Continue <span className="text-xs ml-2 opacity-70 font-normal">(Press Enter)</span>
@@ -296,7 +343,6 @@ export const LessonView: React.FC<LessonViewProps> = ({
              <div className="text-xl font-medium text-gray-600 mb-4">{currentExercise.prompt}</div>
            ) : (
              <div className="flex items-start gap-4">
-                {/* Only show TTS if it is NOT a source translation (where prompt is in Target Language already) or if we want to hear the foreign text */}
                 {(currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'LISTEN_AND_TYPE' || !isOffline) && (
                    <button 
                     onClick={() => handlePlayAudio(currentExercise.prompt)}
@@ -363,15 +409,16 @@ export const LessonView: React.FC<LessonViewProps> = ({
                {/* Word Bank */}
                <div className="flex flex-wrap justify-center gap-2">
                  {currentExercise.options?.map((word, idx) => {
-                   const isSelected = selectedWords.includes(word);
+                   // Improved logic to support duplicate words
+                   const isDisabled = isWordUsed(word, idx);
                    return (
                      <button
                        key={idx}
                        onClick={() => handleAddWord(word)}
-                       disabled={isSelected}
+                       disabled={isDisabled}
                        className={`
                          px-4 py-2 rounded-xl text-sm font-bold border-b-4 transition-all
-                         ${isSelected 
+                         ${isDisabled 
                            ? 'bg-gray-200 text-transparent border-gray-200 select-none' 
                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 active:translate-y-1 active:border-b-0 shadow-sm border-2'
                          }
@@ -397,7 +444,16 @@ export const LessonView: React.FC<LessonViewProps> = ({
       `}>
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
            {status === 'IDLE' && (
-             <div className="flex-1"></div>
+             <div className="flex-1">
+               <Button 
+                 variant="ghost" 
+                 size="lg"
+                 onClick={handleSkip}
+                 className="text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+               >
+                 Skip
+               </Button>
+             </div>
            )}
 
            {status === 'CORRECT' && (

@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -14,6 +15,7 @@ interface DashboardProps {
   onDownload: (topicId: string, topicName: string) => void;
   onDeleteDownload: (topicId: string) => void;
   onOpenProfile: () => void;
+  onOpenShop: () => void;
   downloadingId: string | null;
   isOffline: boolean;
 }
@@ -41,6 +43,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDownload,
   onDeleteDownload,
   onOpenProfile,
+  onOpenShop,
   downloadingId,
   isOffline
 }) => {
@@ -103,7 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 'NONE';
   };
 
-  const totalCrowns = Object.values(userState.topicLevels || {}).reduce((a: number, b: number) => a + b, 0);
+  const totalCrowns = Object.values(userState.topicLevels || {}).reduce((a, b) => Number(a) + Number(b), 0);
   const maxCrowns = TOPICS.length * 5;
 
   return (
@@ -184,14 +187,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
            {TOPICS.map((topic, index) => {
              // Unlock logic: First item is unlocked, or if previous topic has at least level 1 (or is in completedLessons for backward compat)
              const prevTopic = index > 0 ? TOPICS[index - 1] : null;
-             const prevLevel = prevTopic ? (userState.topicLevels?.[prevTopic.id] || (userState.completedLessons.includes(prevTopic.id) ? 1 : 0)) : 1;
+             // Use safer optional chaining and default
+             const prevLevelRaw = prevTopic && userState.topicLevels ? userState.topicLevels[prevTopic.id] : undefined;
+             
+             // Explicitly cast to number to satisfy strict arithmetic checks
+             const prevLevelVal = typeof prevLevelRaw === 'number' ? prevLevelRaw : 0;
+             const isPrevCompleted = prevTopic ? userState.completedLessons.includes(prevTopic.id) : false;
+             const prevLevel = prevTopic 
+               ? (prevLevelVal > 0 ? prevLevelVal : (isPrevCompleted ? 1 : 0))
+               : 1;
+             
              const isUnlocked = index === 0 || prevLevel > 0;
              
-             const level = (userState.topicLevels?.[topic.id] as number) || 0;
+             const levelRaw = userState.topicLevels?.[topic.id];
+             const level = typeof levelRaw === 'number' ? levelRaw : 0;
              const isMastered = level >= 5;
 
              // Zigzag pattern calculation
-             const offset = index % 2 === 0 ? 'translate-x-0' : (index % 4 === 1 ? '-translate-x-8' : 'translate-x-8');
+             // Explicitly cast index to number
+             const idx = Number(index);
+             const offset = idx % 2 === 0 ? 'translate-x-0' : (idx % 4 === 1 ? '-translate-x-8' : 'translate-x-8');
              
              const isFocused = focusedTopicIndex === index;
              const offlineStatus = getOfflineStatus(topic.id);
@@ -306,8 +321,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Bottom Nav */}
       <div className="border-t-2 border-gray-200 p-2 flex justify-around bg-white">
-        <button className="p-2 rounded-xl hover:bg-gray-100 text-duo-blue">
-          <Globe size={28} />
+        <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={onOpenShop}>
+          <Store size={28} />
         </button>
         <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={onOpenProfile}>
           <Trophy size={28} />

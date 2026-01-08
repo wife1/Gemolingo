@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { LessonView } from './components/LessonView';
 import { Profile } from './components/Profile';
+import { Shop } from './components/Shop';
 import { AchievementNotification } from './components/AchievementNotification';
-import { UserState, Lesson, SUPPORTED_LANGUAGES, Difficulty, Achievement } from './types';
+import { UserState, Lesson, SUPPORTED_LANGUAGES, Difficulty, Achievement, LessonResult } from './types';
 import { generateLessonContent } from './services/geminiService';
 import { 
   loadUserState, 
@@ -24,17 +25,20 @@ const INITIAL_USER_STATE: UserState = {
   currentLanguage: 'es',
   completedLessons: [],
   difficulty: 'beginner',
-  achievements: [], // Will be initialized in component
+  achievements: [], 
   dailyXp: 0,
   dailyGoal: 50,
   lastActiveDate: new Date().toDateString(),
   timerEnabled: false,
-  topicLevels: {} // Initialize empty
+  topicLevels: {},
+  streakFreezeActive: false,
+  perfectLessonCount: 0,
+  fastLessonCount: 0
 };
 
 const App: React.FC = () => {
   const [userState, setUserState] = useState<UserState>(INITIAL_USER_STATE);
-  const [currentScreen, setCurrentScreen] = useState<'DASHBOARD' | 'LESSON' | 'LOADING' | 'PROFILE'>('DASHBOARD');
+  const [currentScreen, setCurrentScreen] = useState<'DASHBOARD' | 'LESSON' | 'LOADING' | 'PROFILE' | 'SHOP'>('DASHBOARD');
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineLessons, setOfflineLessons] = useState<any>({});
@@ -53,40 +57,45 @@ const App: React.FC = () => {
     // Migration: ensure topicLevels exists
     if (!stateToUse.topicLevels) {
       stateToUse.topicLevels = {};
-      // If we have completed lessons but no levels, assume level 1 for them
-      stateToUse.completedLessons.forEach(lessonId => {
-        // completedLessons stored 'topic-difficulty', we need to extract topic
-        // But wait, older logic stored topicID directly? The App logic below stores composite ID.
-        // Let's iterate topics in Dashboard to be safe, but here we can try to guess.
-        // Actually simpler: we just start fresh for levels if missing, or we can parse.
-        // For robustness, let's leave it empty or 1 for legacy.
-        // Since we can't easily parse topicId from composite without the delimiter logic which might vary,
-        // let's just initialize.
-      });
     }
+    // Migration: ensure new counters exist
+    if (typeof stateToUse.perfectLessonCount === 'undefined') stateToUse.perfectLessonCount = 0;
+    if (typeof stateToUse.fastLessonCount === 'undefined') stateToUse.fastLessonCount = 0;
 
-    // Date Check for Daily XP and Streak
+    // Date Check for Daily XP, Streak, and Streak Freeze
     const today = new Date().toDateString();
     if (stateToUse.lastActiveDate !== today) {
-      // It is a new day
+      // It is a new day (login)
+      
+      // Reset Daily XP
       stateToUse.dailyXp = 0;
       
-      // Simple streak logic: if last active was yesterday, keep streak, else reset if missed a day
+      // Streak Logic
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       
       if (stateToUse.lastActiveDate !== yesterday.toDateString()) {
-         // If last active was not yesterday (and not today), streak breaks
-         // Exception: If lastActiveDate is empty (first run), start at 1
+         // Missed a day (or more)
          if (stateToUse.lastActiveDate) {
-             stateToUse.streak = 1;
+             // If we have a previous date (not first install)
+             if (stateToUse.streakFreezeActive) {
+                // STREAK FREEZE SAVES THE DAY
+                console.log("Streak Freeze consumed!");
+                stateToUse.streakFreezeActive = false;
+                // We keep the streak as is, do not reset to 1.
+                // Note: user still needs to complete a lesson today to increment it.
+                alert("Your Streak Freeze protected your streak!");
+             } else {
+                // No freeze, reset streak
+                stateToUse.streak = 1;
+             }
          }
       }
       
       stateToUse.lastActiveDate = today;
     }
 
-    // Ensure achievements are initialized (handles new achievements added to code)
+    // Ensure achievements are initialized
     stateToUse.achievements = initializeAchievements(stateToUse.achievements);
     
     setUserState(stateToUse);
@@ -125,7 +134,6 @@ const App: React.FC = () => {
     const offlineData = getOfflineLesson(langCode, compositeKey);
     
     if (offlineData) {
-      console.log("Loaded from offline storage");
       setTimeout(() => {
         setCurrentLesson(offlineData);
         setCurrentScreen('LESSON');
@@ -198,13 +206,13 @@ const App: React.FC = () => {
     setOfflineLessons(getAllOfflineLessons());
   };
 
-  const handleLessonComplete = (xpEarned: number) => {
+  const handleLessonComplete = (result: LessonResult) => {
     setUserState(prev => {
       const today = new Date().toDateString();
-      const isNewDay = prev.lastActiveDate !== today;
       
       let newStreak = prev.streak;
-      if (isNewDay) {
+      if (prev.dailyXp === 0) {
+          // First lesson of the day increments streak
           newStreak += 1;
       }
 
@@ -213,17 +221,24 @@ const App: React.FC = () => {
       const currentLevel = prev.topicLevels?.[currentTopicId] || 0;
       const newLevel = Math.min(5, currentLevel + 1);
 
+      // Analyze metrics for challenges
+      const isPerfect = result.mistakes === 0;
+      // "Speed Demon" threshold check (e.g., under 60s) AND timer must have been enabled to count duration accurately
+      const isFast = prev.timerEnabled && result.timeSeconds > 0 && result.timeSeconds < 60;
+
       const newState = {
         ...prev,
-        xp: prev.xp + xpEarned,
-        dailyXp: (isNewDay ? 0 : prev.dailyXp) + xpEarned,
-        completedLessons: [...new Set([...prev.completedLessons, currentTopicId])], // Now storing topicId directly for simplicity in unlock logic
+        xp: prev.xp + result.xp,
+        dailyXp: prev.dailyXp + result.xp,
+        completedLessons: [...new Set([...prev.completedLessons, currentTopicId])],
         lastActiveDate: today,
         streak: newStreak,
         topicLevels: {
           ...prev.topicLevels,
           [currentTopicId]: newLevel
-        }
+        },
+        perfectLessonCount: isPerfect ? (prev.perfectLessonCount || 0) + 1 : (prev.perfectLessonCount || 0),
+        fastLessonCount: isFast ? (prev.fastLessonCount || 0) + 1 : (prev.fastLessonCount || 0)
       };
 
       // Check achievements
@@ -253,7 +268,6 @@ const App: React.FC = () => {
     setUserState(prev => {
       const newHearts = Math.max(0, prev.hearts - 1);
       if (newHearts === 0) {
-        // Simple alert for now, could be a modal
         return { ...prev, hearts: 5 }; 
       }
       return { ...prev, hearts: newHearts };
@@ -275,6 +289,21 @@ const App: React.FC = () => {
   const handleOpenProfile = () => {
     setCurrentScreen('PROFILE');
   };
+  
+  const handleOpenShop = () => {
+    setCurrentScreen('SHOP');
+  };
+  
+  const handleBuyFreeze = () => {
+    if (userState.streakFreezeActive) return;
+    if (userState.xp < 50) return;
+    
+    setUserState(prev => ({
+      ...prev,
+      xp: prev.xp - 50,
+      streakFreezeActive: true
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -295,6 +324,7 @@ const App: React.FC = () => {
           onDownload={handleDownloadLesson}
           onDeleteDownload={handleDeleteDownload}
           onOpenProfile={handleOpenProfile}
+          onOpenShop={handleOpenShop}
           downloadingId={downloadingTopic}
           isOffline={isOffline}
         />
@@ -304,6 +334,14 @@ const App: React.FC = () => {
         <Profile 
           userState={userState} 
           onBack={() => setCurrentScreen('DASHBOARD')} 
+        />
+      )}
+      
+      {currentScreen === 'SHOP' && (
+        <Shop 
+          userState={userState} 
+          onBack={() => setCurrentScreen('DASHBOARD')}
+          onBuyFreeze={handleBuyFreeze}
         />
       )}
 
