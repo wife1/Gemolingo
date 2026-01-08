@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -105,8 +105,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 'NONE';
   };
 
-  const totalCrowns = Object.values(userState.topicLevels || {}).reduce((a: number, b: number) => a + b, 0);
+  const totalCrowns = (Object.values(userState.topicLevels || {}) as number[]).reduce((a: number, b: number) => a + b, 0);
   const maxCrowns = TOPICS.length * 5;
+  const difficulties: Difficulty[] = ['beginner', 'intermediate', 'advanced'];
 
   return (
     <div className="max-w-md mx-auto h-screen bg-white flex flex-col">
@@ -130,13 +131,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ))}
              </div>
            </button>
+
+           {/* Difficulty Selector */}
+           <button className="flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors group relative border-2 border-transparent hover:border-gray-200">
+             <Signal size={16} className={`
+                ${userState.difficulty === 'beginner' ? 'text-green-500' : ''}
+                ${userState.difficulty === 'intermediate' ? 'text-yellow-500' : ''}
+                ${userState.difficulty === 'advanced' ? 'text-red-500' : ''}
+             `} />
+             <span className="font-bold text-xs text-gray-600 capitalize hidden min-[360px]:block">{userState.difficulty}</span>
+             <ChevronDown size={14} className="text-gray-400" />
+             
+             {/* Dropdown */}
+             <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl p-2 hidden group-focus-within:block w-40 z-50 animate-pop-in">
+                {difficulties.map(diff => (
+                  <div 
+                    key={diff}
+                    onClick={() => onChangeDifficulty(diff)}
+                    className={`
+                      flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-100 
+                      ${userState.difficulty === diff ? 'bg-blue-50 text-duo-blue' : 'text-gray-600'}
+                    `}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${
+                      diff === 'beginner' ? 'bg-green-400' : 
+                      diff === 'intermediate' ? 'bg-yellow-400' : 'bg-red-400'
+                    }`} />
+                    <span className="capitalize font-bold text-sm">{diff}</span>
+                    {userState.difficulty === diff && <Check size={14} className="ml-auto"/>}
+                  </div>
+                ))}
+             </div>
+           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button 
             onClick={onToggleTimer}
             className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border-b-4 active:border-b-0 active:translate-y-1 focus:outline-none
+              flex items-center gap-1 px-2 py-1.5 rounded-xl transition-all border-b-4 active:border-b-0 active:translate-y-1 focus:outline-none
               ${userState.timerEnabled 
                 ? 'bg-yellow-400 border-yellow-600 text-yellow-900 shadow-lg' 
                 : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200'
@@ -144,15 +177,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
             `}
             title={userState.timerEnabled ? "Speed Run Active" : "Enable Speed Run"}
           >
-            <Zap size={18} className={userState.timerEnabled ? "fill-current animate-pulse" : ""} />
-            <span className="font-extrabold text-xs tracking-wide">SPEED RUN</span>
+            <Zap size={16} className={userState.timerEnabled ? "fill-current animate-pulse" : ""} />
+            <span className="font-extrabold text-[10px] tracking-wide hidden min-[400px]:block">SPEED</span>
           </button>
 
-          <div className="flex items-center gap-1 text-orange-500 font-bold">
-            <Flame className="fill-current" size={20} /> {userState.streak}
+          <div className="flex items-center gap-1 text-orange-500 font-bold text-sm">
+            <Flame className="fill-current" size={18} /> {userState.streak}
           </div>
-          <div className="flex items-center gap-1 text-duo-yellow-dark font-bold">
-            <Zap className="fill-current" size={20} /> {userState.xp}
+          <div className="flex items-center gap-1 text-duo-yellow-dark font-bold text-sm">
+            <Zap className="fill-current" size={18} /> {userState.xp}
           </div>
         </div>
       </div>

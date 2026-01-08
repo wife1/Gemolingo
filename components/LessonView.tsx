@@ -17,6 +17,66 @@ interface LessonViewProps {
 
 const DEFAULT_TIME_LIMIT = 120; // 2 minutes
 
+// Sound Effect Helpers
+const playSuccessSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const t = ctx.currentTime;
+    
+    // First note (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, t); 
+    gain1.gain.setValueAtTime(0.1, t);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    osc1.start(t);
+    osc1.stop(t + 0.4);
+
+    // Second note (A5) - Ding!
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, t + 0.1); 
+    gain2.gain.setValueAtTime(0.1, t + 0.1);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc2.start(t + 0.1);
+    osc2.stop(t + 0.5);
+  } catch (e) {
+    console.error("Audio play failed", e);
+  }
+};
+
+const playErrorSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const t = ctx.currentTime;
+    
+    // Low pitched buzz/thud
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.linearRampToValueAtTime(100, t + 0.3);
+    gain.gain.setValueAtTime(0.1, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  } catch (e) {
+    console.error("Audio play failed", e);
+  }
+};
+
 export const LessonView: React.FC<LessonViewProps> = ({ 
   lesson, 
   onComplete, 
@@ -152,6 +212,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
     }
 
     if (isCorrect) {
+      playSuccessSound();
       setStatus('CORRECT');
       setCorrectCount(prev => prev + 1);
       confetti({
@@ -161,6 +222,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
         colors: ['#58cc02', '#ffffff']
       });
     } else {
+      playErrorSound();
       setStatus('WRONG');
       setMistakes(prev => prev + 1);
       onLoseHeart();
@@ -168,6 +230,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   };
 
   const handleSkip = () => {
+    playErrorSound();
     setStatus('WRONG');
     setMistakes(prev => prev + 1);
     if (!timerEnabled) {
