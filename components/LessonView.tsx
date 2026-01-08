@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -188,10 +188,10 @@ export const LessonView: React.FC<LessonViewProps> = ({
     // XP Calculation: 
     // 5 XP for finishing
     // 2 XP per correct answer
-    // 5 XP Speed Bonus (if timer enabled)
+    // Dynamic Speed Bonus: 1 XP per 5 seconds remaining
     const baseXP = 5;
     const accuracyXP = correctCount * 2;
-    const speedBonus = timerEnabled ? 5 : 0;
+    const speedBonus = timerEnabled ? Math.ceil(timeLeft / 5) : 0;
     const totalXP = baseXP + accuracyXP + speedBonus;
     
     // Calculate total duration (if timer is enabled use elapsed, otherwise just estimate or 0)
@@ -260,7 +260,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
   }
 
   if (isLessonComplete) {
-    const earnedXP = 5 + (correctCount * 2) + (timerEnabled ? 5 : 0);
+    const speedBonus = timerEnabled ? Math.ceil(timeLeft / 5) : 0;
+    const earnedXP = 5 + (correctCount * 2) + speedBonus;
     const isPerfect = mistakes === 0;
 
     return (
@@ -274,7 +275,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
           {isPerfect ? 'Perfect Lesson!' : 'Lesson Complete!'}
         </h1>
         
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-wrap justify-center gap-4 mb-8">
            <div className="bg-orange-100 p-4 rounded-2xl border-2 border-orange-200 min-w-[120px]">
               <div className="text-sm font-bold text-orange-400 uppercase">Total XP</div>
               <div className="text-3xl font-black text-orange-500">+{earnedXP}</div>
@@ -285,6 +286,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
                 {Math.round((correctCount / lesson.exercises.length) * 100)}%
               </div>
            </div>
+           {timerEnabled && (
+             <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-200 min-w-[120px] animate-bounce">
+                <div className="text-sm font-bold text-yellow-600 uppercase flex items-center justify-center gap-1">
+                  <Zap size={14} className="fill-current" /> Speed
+                </div>
+                <div className="text-3xl font-black text-yellow-500">+{speedBonus}</div>
+             </div>
+           )}
         </div>
 
         {isPerfect && (
@@ -306,20 +315,20 @@ export const LessonView: React.FC<LessonViewProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-white">
+    <div className={`flex flex-col h-screen max-w-2xl mx-auto bg-white ${timerEnabled ? 'border-x-4 border-yellow-400' : ''}`}>
       {/* Header */}
       <div className="px-4 py-6 flex items-center gap-4">
         <button onClick={onExit} className="text-gray-400 hover:text-gray-600">
-          <X size={24} />
+          <ArrowLeft size={24} />
         </button>
         <ProgressBar progress={progress} />
         
         {timerEnabled ? (
           <div className={`
-             flex items-center gap-1 font-black font-mono text-xl px-3 py-1 rounded-xl border-2
-             ${timeLeft < 10 ? 'text-duo-red border-duo-red bg-red-50 animate-pulse' : 'text-duo-blue border-duo-blue bg-blue-50'}
+             flex items-center gap-1 font-black font-mono text-xl px-3 py-1 rounded-xl border-4 shadow-sm transition-all duration-300
+             ${timeLeft < 30 ? 'text-white bg-duo-red border-duo-red-dark scale-110 animate-pulse' : 'text-yellow-700 bg-yellow-100 border-yellow-400'}
           `}>
-             <Timer size={20} />
+             <Zap size={20} className="fill-current" />
              {formatTime(timeLeft)}
           </div>
         ) : (
@@ -493,4 +502,4 @@ export const LessonView: React.FC<LessonViewProps> = ({
       </div>
     </div>
   );
-};
+}

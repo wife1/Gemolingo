@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson } from '../types';
 import { Button } from './UI';
@@ -106,13 +105,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return 'NONE';
   };
 
-  const totalCrowns = Object.values(userState.topicLevels || {}).reduce((a, b) => Number(a) + Number(b), 0);
+  const totalCrowns = Object.values(userState.topicLevels || {}).reduce((a: number, b: number) => a + b, 0);
   const maxCrowns = TOPICS.length * 5;
 
   return (
     <div className="max-w-md mx-auto h-screen bg-white flex flex-col">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b-2 border-gray-200 px-4 py-2 flex items-center justify-between">
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b-2 border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
            <button className="flex items-center gap-1 hover:bg-gray-100 p-1 rounded-lg transition-colors group relative">
              <span className="text-2xl">{currentLangConfig?.flag}</span>
@@ -134,22 +133,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-yellow-500 font-bold" title="Total Crowns">
-             <Crown className="fill-current" size={20} /> {totalCrowns}
-          </div>
-
           <button 
             onClick={onToggleTimer}
             className={`
-              flex items-center justify-center p-1.5 rounded-lg transition-colors border-2
+              flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border-b-4 active:border-b-0 active:translate-y-1 focus:outline-none
               ${userState.timerEnabled 
-                ? 'bg-red-50 text-red-500 border-red-200' 
-                : 'bg-gray-50 text-gray-300 border-transparent hover:bg-gray-100'
+                ? 'bg-yellow-400 border-yellow-600 text-yellow-900 shadow-lg' 
+                : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200'
               }
             `}
-            title={userState.timerEnabled ? "Timer Active" : "Enable Timer"}
+            title={userState.timerEnabled ? "Speed Run Active" : "Enable Speed Run"}
           >
-            <Timer size={20} className={userState.timerEnabled ? "fill-red-100" : ""} />
+            <Zap size={18} className={userState.timerEnabled ? "fill-current animate-pulse" : ""} />
+            <span className="font-extrabold text-xs tracking-wide">SPEED RUN</span>
           </button>
 
           <div className="flex items-center gap-1 text-orange-500 font-bold">
@@ -185,28 +181,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
            <div className="absolute top-0 bottom-0 left-1/2 w-2 bg-gray-200 -translate-x-1/2 rounded-full -z-10" />
 
            {TOPICS.map((topic, index) => {
+             const i = index;
+
              // Unlock logic: First item is unlocked, or if previous topic has at least level 1 (or is in completedLessons for backward compat)
-             const prevTopic = index > 0 ? TOPICS[index - 1] : null;
+             const prevTopic = i > 0 ? TOPICS[i - 1] : null;
              // Use safer optional chaining and default
              const prevLevelRaw = prevTopic && userState.topicLevels ? userState.topicLevels[prevTopic.id] : undefined;
              
              // Explicitly cast to number to satisfy strict arithmetic checks
-             const prevLevelVal = typeof prevLevelRaw === 'number' ? prevLevelRaw : 0;
+             const prevLevelVal: number = typeof prevLevelRaw === 'number' ? prevLevelRaw : 0;
              const isPrevCompleted = prevTopic ? userState.completedLessons.includes(prevTopic.id) : false;
+             
              const prevLevel = prevTopic 
                ? (prevLevelVal > 0 ? prevLevelVal : (isPrevCompleted ? 1 : 0))
                : 1;
              
-             const isUnlocked = index === 0 || prevLevel > 0;
+             const isUnlocked = i === 0 || prevLevel > 0;
              
              const levelRaw = userState.topicLevels?.[topic.id];
-             const level = typeof levelRaw === 'number' ? levelRaw : 0;
+             const level: number = typeof levelRaw === 'number' ? levelRaw : 0;
              const isMastered = level >= 5;
 
              // Zigzag pattern calculation
-             // Explicitly cast index to number
-             const idx = Number(index);
-             const offset = idx % 2 === 0 ? 'translate-x-0' : (idx % 4 === 1 ? '-translate-x-8' : 'translate-x-8');
+             const idx = index;
+             const offset = (idx % 2) === 0 ? 'translate-x-0' : ((idx % 4) === 1 ? '-translate-x-8' : 'translate-x-8');
              
              const isFocused = focusedTopicIndex === index;
              const offlineStatus = getOfflineStatus(topic.id);
@@ -267,6 +265,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     >
                       {isMastered ? <Crown size={32} className="text-white drop-shadow-md fill-current" strokeWidth={2} /> : topic.icon}
                     </button>
+
+                    {/* Speed Run Indicator on Node */}
+                    {isUnlocked && userState.timerEnabled && (
+                        <div className="absolute -top-2 -left-2 bg-yellow-400 text-yellow-900 rounded-full p-1.5 border-2 border-white shadow-md z-20 animate-bounce">
+                           <Zap size={14} fill="currentColor" />
+                        </div>
+                    )}
                     
                     {/* Crown Level Badge */}
                     {isUnlocked && level > 0 && (
