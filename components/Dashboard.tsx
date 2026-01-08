@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -11,7 +11,7 @@ interface DashboardProps {
   onChangeDifficulty: (diff: Difficulty) => void;
   onToggleTimer: () => void;
   offlineLessons: Record<string, Record<string, Lesson>>;
-  onDownload: (topicId: string, topicName: string) => void;
+  onDownload: (topicId: string, topicName: string) => Promise<void>;
   onDeleteDownload: (topicId: string) => void;
   onOpenProfile: () => void;
   onOpenShop: () => void;
@@ -41,6 +41,26 @@ const TOPICS = [
   { id: 'time', name: 'Time & Dates', icon: '⏰', color: 'bg-purple-600' },
   { id: 'culture', name: 'Arts & Culture', icon: '🎭', color: 'bg-pink-600' },
   { id: 'numbers', name: 'Numbers', icon: '🔢', color: 'bg-cyan-600' },
+  { id: 'fashion', name: 'Fashion', icon: '👗', color: 'bg-pink-500' },
+  { id: 'directions', name: 'Directions', icon: '🗺️', color: 'bg-blue-500' },
+  { id: 'entertainment', name: 'Entertainment', icon: '🎬', color: 'bg-purple-500' },
+  { id: 'government', name: 'Government', icon: '🏛️', color: 'bg-gray-500' },
+  { id: 'environment', name: 'Environment', icon: '♻️', color: 'bg-green-500' },
+  { id: 'science', name: 'Science', icon: '🔬', color: 'bg-indigo-500' },
+  { id: 'history', name: 'History', icon: '📜', color: 'bg-yellow-600' },
+  { id: 'internet', name: 'Internet', icon: '🌐', color: 'bg-cyan-500' },
+  { id: 'emergency', name: 'Emergency', icon: '🚑', color: 'bg-red-600' },
+  { id: 'holidays', name: 'Holidays', icon: '🎉', color: 'bg-orange-500' },
+  { id: 'music', name: 'Music', icon: '🎵', color: 'bg-pink-600' },
+  { id: 'space', name: 'Space', icon: '🚀', color: 'bg-indigo-700' },
+  { id: 'business', name: 'Business', icon: '🤝', color: 'bg-slate-500' },
+  { id: 'cooking', name: 'Cooking', icon: '🍳', color: 'bg-orange-600' },
+  { id: 'social_media', name: 'Social Media', icon: '📱', color: 'bg-blue-400' },
+  { id: 'architecture', name: 'Architecture', icon: '🏗️', color: 'bg-stone-500' },
+  { id: 'literature', name: 'Literature', icon: '📚', color: 'bg-amber-700' },
+  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-red-500' },
+  { id: 'transport', name: 'Transport', icon: '🚌', color: 'bg-yellow-500' },
+  { id: 'relationships', name: 'Relationships', icon: '💘', color: 'bg-rose-500' },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -64,6 +84,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Bulk Download State
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{current: number, total: number} | null>(null);
+
   // Filtering and Sorting State
   const [filter, setFilter] = useState<'ALL' | 'IN_PROGRESS' | 'MASTERED'>('ALL');
   const [sort, setSort] = useState<'DEFAULT' | 'NAME' | 'LEVEL'>('DEFAULT');
@@ -138,7 +162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         e.preventDefault();
         setFocusedTopicIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        if (showLanguageSelector || showImportHelp) return;
+        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress) return;
         e.preventDefault();
         const topic = displayedTopics[focusedTopicIndex];
         if (topic) {
@@ -149,7 +173,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp]);
+  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress]);
 
   // Auto-scroll to focused topic
   useEffect(() => {
@@ -173,6 +197,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
     
     if (offlineLessons[lang] && offlineLessons[lang][key]) return 'DOWNLOADED';
     return 'NONE';
+  };
+
+  const getUndownloadedTopics = () => {
+    return TOPICS.filter(t => getOfflineStatus(t.id) === 'NONE');
+  };
+
+  const handleDownloadAllClick = () => {
+    const toDownload = getUndownloadedTopics();
+    if (toDownload.length === 0) {
+        alert("All topics for this level are already downloaded!");
+        return;
+    }
+    setShowDownloadConfirm(true);
+  };
+
+  const confirmBulkDownload = async () => {
+    setShowDownloadConfirm(false);
+    const toDownload = getUndownloadedTopics();
+    setBulkProgress({ current: 0, total: toDownload.length });
+
+    for (let i = 0; i < toDownload.length; i++) {
+        const topic = toDownload[i];
+        try {
+            await onDownload(topic.id, topic.name);
+        } catch (e) {
+            console.error(`Failed to download ${topic.name}`, e);
+        }
+        setBulkProgress({ current: i + 1, total: toDownload.length });
+        // Small delay to prevent complete UI lockup and give time for state updates
+        await new Promise(r => setTimeout(r, 50));
+    }
+
+    setBulkProgress(null);
   };
 
   const totalCrowns = (Object.values(userState.topicLevels || {}) as number[]).reduce((a: number, b: number) => a + b, 0);
@@ -335,6 +392,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-32">
         {isDefaultView && (
             <div className="space-y-4">
+            
+            {/* Download All Button */}
+            {!isOffline && (
+              <button
+                onClick={handleDownloadAllClick}
+                className="w-full bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 text-duo-blue p-4 rounded-2xl flex items-center justify-between transition-colors group relative overflow-hidden"
+              >
+                <div className="flex items-center gap-4 relative z-10">
+                   <div className="bg-white p-3 rounded-xl border-2 border-blue-100 group-hover:scale-110 transition-transform">
+                      <CloudDownload size={24} className="text-duo-blue" />
+                   </div>
+                   <div className="text-left">
+                      <div className="font-bold text-lg text-gray-800">Offline Course</div>
+                      <div className="text-xs font-bold text-blue-400 uppercase flex items-center gap-1">
+                         {getUndownloadedTopics().length} Lessons Available
+                      </div>
+                   </div>
+                </div>
+                <div className="bg-duo-blue text-white px-4 py-2 rounded-xl font-bold shadow-sm border-b-4 border-blue-600 active:border-b-0 active:translate-y-1 relative z-10 text-sm">
+                   GET ALL
+                </div>
+                {/* Decoration */}
+                <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-blue-100 to-transparent opacity-50"></div>
+              </button>
+            )}
+
             {/* Daily Goal */}
             <DailyGoalWidget dailyXp={userState.dailyXp} dailyGoal={userState.dailyGoal} />
 
@@ -505,6 +588,69 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <Trophy size={28} />
         </button>
       </div>
+
+      {/* Bulk Download Confirmation Modal */}
+      {showDownloadConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+               <div className="flex items-center gap-3 mb-4 text-gray-800">
+                  <div className="bg-yellow-100 p-3 rounded-full text-yellow-600">
+                     <AlertTriangle size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold">Download All?</h3>
+               </div>
+               
+               <p className="text-gray-600 mb-2 leading-relaxed">
+                  You are about to download <strong>{getUndownloadedTopics().length}</strong> lessons for <strong>{userState.difficulty}</strong> level.
+               </p>
+               <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-6">
+                  This may take a few minutes.
+               </p>
+
+               <div className="flex gap-4">
+                   <Button 
+                     variant="ghost" 
+                     fullWidth 
+                     onClick={() => setShowDownloadConfirm(false)}
+                   >
+                     Cancel
+                   </Button>
+                   <Button 
+                     variant="primary" 
+                     fullWidth 
+                     onClick={confirmBulkDownload}
+                   >
+                     Start Download
+                   </Button>
+               </div>
+           </div>
+        </div>
+      )}
+
+      {/* Bulk Download Progress Modal */}
+      {bulkProgress && (
+         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-pop-in">
+             <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+                 <div className="mb-6 flex justify-center">
+                    <Loader2 size={48} className="text-duo-blue animate-spin" />
+                 </div>
+                 <h3 className="text-2xl font-bold text-gray-800 mb-2">Downloading...</h3>
+                 <p className="text-gray-500 mb-6">
+                    Please keep the app open.
+                 </p>
+                 
+                 <div className="w-full bg-gray-200 rounded-full h-4 mb-2 overflow-hidden">
+                    <div 
+                      className="bg-duo-blue h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                    />
+                 </div>
+                 <div className="text-sm font-bold text-gray-400">
+                    {bulkProgress.current} / {bulkProgress.total} Lessons
+                 </div>
+             </div>
+         </div>
+      )}
 
       {/* Language Selector Modal */}
       {showLanguageSelector && (

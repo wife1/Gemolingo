@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, WifiOff } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -89,6 +89,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [textInput, setTextInput] = useState("");
   const [status, setStatus] = useState<'IDLE' | 'CORRECT' | 'WRONG' | 'TIME_UP'>('IDLE');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLessonComplete, setIsLessonComplete] = useState(false);
@@ -96,6 +97,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [mistakes, setMistakes] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showPronunciation, setShowPronunciation] = useState(false);
   
   // Custom word bank state
   const [customOptions, setCustomOptions] = useState<string[]>([]);
@@ -132,9 +134,17 @@ export const LessonView: React.FC<LessonViewProps> = ({
     setSelectedWords([]);
     setCustomOptions([]);
     setCustomInput("");
+    setTextInput("");
     setShowExplanation(false);
+    setShowPronunciation(false);
     if (status !== 'TIME_UP') {
       setStatus('IDLE');
+    }
+    
+    // Auto-play audio for listen exercises
+    if (currentExercise.type === 'LISTEN_AND_TYPE' && status === 'IDLE' && !isOffline) {
+       // Small delay to ensure smooth transition
+       setTimeout(() => handlePlayAudio(currentExercise.prompt), 500);
     }
   }, [currentExerciseIndex]);
 
@@ -156,7 +166,18 @@ export const LessonView: React.FC<LessonViewProps> = ({
          return;
       }
 
-      // Ignore Enter key if user is typing in an input field (to allow them to submit the word instead of the lesson)
+      // Special handling for FILL_IN_THE_BLANK input to allow Enter key to submit
+      if (currentExercise.type === 'FILL_IN_THE_BLANK' && e.key === 'Enter') {
+          e.preventDefault();
+          if (status === 'IDLE' && textInput.trim()) {
+             handleCheck();
+          } else if (status !== 'IDLE') {
+             handleContinue();
+          }
+          return;
+      }
+
+      // Ignore Enter key if user is typing in a word bank input field
       if (e.target instanceof HTMLInputElement) {
         if (e.key === 'Escape') {
             (e.target as HTMLInputElement).blur();
@@ -190,7 +211,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation, showExitModal]);
+  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation, showExitModal, textInput]);
 
   // Handle Lesson Completion Celebration
   useEffect(() => {
@@ -236,9 +257,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
     if (currentExercise.type === 'SELECT_MEANING') {
       isCorrect = selectedOption === currentExercise.correctAnswer;
-    } else if (currentExercise.type === 'TRANSLATE_TO_TARGET' || currentExercise.type === 'TRANSLATE_TO_SOURCE') {
+    } else if (currentExercise.type === 'FILL_IN_THE_BLANK') {
+      isCorrect = textInput.trim().toLowerCase() === currentExercise.correctAnswer.trim().toLowerCase();
+    } else if (['TRANSLATE_TO_TARGET', 'TRANSLATE_TO_SOURCE', 'LISTEN_AND_TYPE'].includes(currentExercise.type)) {
       const answer = selectedWords.join(' ');
-      isCorrect = answer.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
+      // Simple normalization
+      const normalizedAnswer = answer.toLowerCase().replace(/[.,!?;]/g, '').trim();
+      const normalizedCorrect = currentExercise.correctAnswer.toLowerCase().replace(/[.,!?;]/g, '').trim();
+      isCorrect = normalizedAnswer === normalizedCorrect;
     }
 
     if (isCorrect) {
@@ -428,7 +454,16 @@ export const LessonView: React.FC<LessonViewProps> = ({
         <button onClick={() => setShowExitModal(true)} className="text-gray-400 hover:text-gray-600">
           <ArrowLeft size={24} />
         </button>
-        <ProgressBar progress={progress} />
+        <div className="flex-1">
+          <ProgressBar progress={progress} />
+        </div>
+        
+        {isOffline && (
+            <div className="flex items-center gap-1 text-gray-400 bg-gray-100 px-2 py-1 rounded-full text-xs font-bold border border-gray-200" title="Offline Mode">
+                <WifiOff size={14} />
+                <span className="hidden sm:inline">OFFLINE</span>
+            </div>
+        )}
         
         {timerEnabled ? (
           <div className={`
@@ -451,6 +486,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
           {currentExercise.type === 'SELECT_MEANING' && "Select the correct meaning"}
           {currentExercise.type === 'TRANSLATE_TO_TARGET' && "Translate this sentence"}
           {currentExercise.type === 'TRANSLATE_TO_SOURCE' && "Translate this sentence"}
+          {currentExercise.type === 'LISTEN_AND_TYPE' && "Tap what you hear"}
+          {currentExercise.type === 'FILL_IN_THE_BLANK' && "Complete the sentence"}
         </h2>
 
         {/* Question Area */}
@@ -458,23 +495,76 @@ export const LessonView: React.FC<LessonViewProps> = ({
            {currentExercise.type === 'SELECT_MEANING' ? (
              <div className="text-xl font-medium text-gray-600 mb-4">{currentExercise.prompt}</div>
            ) : (
-             <div className="flex items-start gap-4">
-                {(currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'LISTEN_AND_TYPE' || !isOffline) && (
-                   <button 
-                    onClick={() => handlePlayAudio(currentExercise.prompt)}
-                    className="p-3 bg-duo-blue text-white rounded-xl shadow-b-4 active:scale-95 transition-transform group relative"
-                    title="Press Spacebar"
-                  >
-                    <Volume2 size={24} />
-                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      Space
-                    </div>
-                  </button>
+             <div className={`flex gap-4 ${currentExercise.type === 'LISTEN_AND_TYPE' ? 'flex-col items-center' : 'items-start'}`}>
+                {(currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'LISTEN_AND_TYPE' || (!isOffline && currentExercise.type !== 'FILL_IN_THE_BLANK')) && (
+                   <div className="flex items-center gap-4">
+                     <button 
+                      onClick={() => handlePlayAudio(currentExercise.prompt)}
+                      className={`
+                         bg-duo-blue text-white rounded-xl shadow-b-4 active:scale-95 transition-transform group relative
+                         ${currentExercise.type === 'LISTEN_AND_TYPE' ? 'p-6' : 'p-3'}
+                      `}
+                      title="Press Spacebar"
+                    >
+                      <Volume2 size={currentExercise.type === 'LISTEN_AND_TYPE' ? 48 : 24} />
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        Space
+                      </div>
+                    </button>
+                    
+                    {/* Pronunciation Guide Button for Listen exercises */}
+                    {currentExercise.type === 'LISTEN_AND_TYPE' && currentExercise.pronunciation && (
+                       <button
+                         onClick={() => setShowPronunciation(!showPronunciation)}
+                         className="p-3 bg-gray-100 text-gray-500 rounded-xl hover:bg-gray-200 transition-colors border-2 border-transparent"
+                         title="Show Pronunciation"
+                       >
+                          <Eye size={24} />
+                       </button>
+                    )}
+                   </div>
                 )}
                 
-                <div className="p-4 border-2 border-gray-200 rounded-2xl text-lg relative chat-bubble">
-                  {currentExercise.prompt}
-                </div>
+                {currentExercise.type !== 'LISTEN_AND_TYPE' && currentExercise.type !== 'FILL_IN_THE_BLANK' && (
+                  <div className="p-4 border-2 border-gray-200 rounded-2xl text-lg relative chat-bubble">
+                    {currentExercise.prompt}
+                  </div>
+                )}
+
+                {/* Fill in the Blank Render */}
+                {currentExercise.type === 'FILL_IN_THE_BLANK' && (
+                   <div className="text-xl md:text-2xl font-medium text-gray-700 leading-loose flex flex-wrap items-baseline gap-2 max-w-full">
+                       {currentExercise.prompt.split('___').map((part, i, arr) => (
+                         <React.Fragment key={i}>
+                            <span dangerouslySetInnerHTML={{ __html: part.replace(/\n/g, '<br/>') }}></span>
+                            {i < arr.length - 1 && (
+                              <input
+                                type="text"
+                                value={textInput}
+                                onChange={(e) => setTextInput(e.target.value)}
+                                className={`
+                                   border-b-4 bg-gray-50 px-3 py-1 rounded-t-lg focus:outline-none font-bold text-center min-w-[120px] transition-colors
+                                   ${status === 'CORRECT' ? 'border-duo-green text-duo-green bg-green-50' : ''}
+                                   ${status === 'WRONG' ? 'border-duo-red text-duo-red bg-red-50' : ''}
+                                   ${status === 'IDLE' ? 'border-gray-300 text-gray-800 focus:border-duo-blue focus:bg-blue-50' : ''}
+                                `}
+                                disabled={status !== 'IDLE'}
+                                autoFocus
+                                autoCapitalize="off"
+                                autoComplete="off"
+                              />
+                            )}
+                         </React.Fragment>
+                       ))}
+                   </div>
+                )}
+
+                {/* Pronunciation Text Display */}
+                {currentExercise.type === 'LISTEN_AND_TYPE' && showPronunciation && currentExercise.pronunciation && (
+                    <div className="bg-blue-50 text-duo-blue px-4 py-2 rounded-lg font-mono text-lg font-bold border-2 border-blue-100 animate-pop-in">
+                       {currentExercise.pronunciation}
+                    </div>
+                )}
              </div>
            )}
         </div>
@@ -514,14 +604,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
             </div>
           )}
 
-          {/* Word Bank / Translation */}
-          {(currentExercise.type === 'TRANSLATE_TO_TARGET' || currentExercise.type === 'TRANSLATE_TO_SOURCE') && (
+          {/* Word Bank / Translation / Listen & Type */}
+          {(currentExercise.type === 'TRANSLATE_TO_TARGET' || currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'LISTEN_AND_TYPE') && (
             <>
                {/* Answer Drop Zone */}
                <div className="min-h-[60px] border-b-2 border-gray-200 mb-8 flex flex-wrap gap-2 p-2 relative transition-all">
                   {selectedWords.length === 0 && (
                     <div className="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400 pointer-events-none text-sm font-bold">
-                       Tap words to translate...
+                       {currentExercise.type === 'LISTEN_AND_TYPE' ? 'Tap words you hear...' : 'Tap words to translate...'}
                     </div>
                   )}
                   {selectedWords.map((word, idx) => (
@@ -679,6 +769,13 @@ export const LessonView: React.FC<LessonViewProps> = ({
                  <div className="text-sm md:text-lg font-black text-duo-red break-words leading-tight bg-white/40 p-2 rounded-lg border border-duo-red/10">
                     {currentExercise.correctAnswer}
                  </div>
+                 {/* Show Pronunciation on Wrong Answer for Listen exercises */}
+                 {currentExercise.type === 'LISTEN_AND_TYPE' && currentExercise.pronunciation && (
+                     <div className="flex items-center gap-2 mt-1 text-duo-red-dark text-xs font-bold">
+                        <Ear size={12} />
+                        <span className="font-mono">{currentExercise.pronunciation}</span>
+                     </div>
+                 )}
                </div>
                {(currentExercise.translation || currentExercise.explanation) && (
                    <button
@@ -698,7 +795,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
              size="lg"
              className="min-w-[150px]"
              onClick={status === 'IDLE' ? handleCheck : handleContinue}
-             disabled={status === 'IDLE' && !selectedOption && selectedWords.length === 0}
+             disabled={status === 'IDLE' && ((currentExercise.type === 'FILL_IN_THE_BLANK' ? !textInput.trim() : (!selectedOption && selectedWords.length === 0)))}
            >
              {status === 'IDLE' ? 'Check' : 'Continue'}
            </Button>

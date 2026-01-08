@@ -4,7 +4,8 @@ export enum ExerciseType {
   TRANSLATE_TO_TARGET = 'TRANSLATE_TO_TARGET',
   TRANSLATE_TO_SOURCE = 'TRANSLATE_TO_SOURCE',
   SELECT_MEANING = 'SELECT_MEANING',
-  LISTEN_AND_TYPE = 'LISTEN_AND_TYPE'
+  LISTEN_AND_TYPE = 'LISTEN_AND_TYPE',
+  FILL_IN_THE_BLANK = 'FILL_IN_THE_BLANK'
 }
 
 export interface Exercise {
@@ -15,6 +16,7 @@ export interface Exercise {
   options?: string[]; // For multiple choice or word bank
   translation: string; // The translation of the prompt (for context)
   explanation?: string; // Brief grammar/vocab note
+  pronunciation?: string; // IPA or phonetic guide
 }
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';

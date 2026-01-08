@@ -18,8 +18,10 @@ export const generateLessonContent = async (
   1. TRANSLATE_TO_TARGET: Translate English to ${language}. Provide a "word bank" of options including distractors.
   2. TRANSLATE_TO_SOURCE: Translate ${language} to English. Provide a "word bank".
   3. SELECT_MEANING: Simple multiple choice for vocabulary.
+  4. LISTEN_AND_TYPE: The user listens to a phrase in ${language} and must type it.
+  5. FILL_IN_THE_BLANK: A sentence in ${language} with a missing word represented by "___". The user must type the exact missing word.
   
-  Ensure the content is appropriate for the level.
+  Ensure the content is appropriate for the level. Include an IPA pronunciation guide for the correct answer where applicable.
   `;
 
   try {
@@ -38,9 +40,10 @@ export const generateLessonContent = async (
                 'TRANSLATE_TO_TARGET',
                 'TRANSLATE_TO_SOURCE',
                 'SELECT_MEANING',
-                'LISTEN_AND_TYPE'
+                'LISTEN_AND_TYPE',
+                'FILL_IN_THE_BLANK'
               ]},
-              prompt: { type: Type.STRING, description: "The question or sentence to work with" },
+              prompt: { type: Type.STRING, description: "The question text, sentence to translate, text to be spoken, or sentence with '___' for blank." },
               correctAnswer: { type: Type.STRING, description: "The exact correct answer string" },
               options: { 
                 type: Type.ARRAY, 
@@ -48,7 +51,8 @@ export const generateLessonContent = async (
                 description: "Array of words for the word bank or multiple choice options. Must include the correct words and some wrong ones."
               },
               translation: { type: Type.STRING, description: "English translation of the prompt/answer for context" },
-              explanation: { type: Type.STRING, description: "Brief grammar or vocabulary explanation for the correct answer to help the student learn." }
+              explanation: { type: Type.STRING, description: "Brief grammar or vocabulary explanation for the correct answer." },
+              pronunciation: { type: Type.STRING, description: "IPA pronunciation guide for the target text." }
             },
             required: ["id", "type", "prompt", "correctAnswer", "options", "translation", "explanation"]
           }
@@ -69,7 +73,8 @@ export const generateLessonContent = async (
         correctAnswer: "Hola",
         options: ["Hola", "Adios", "Gato", "Perro"],
         translation: "Hello",
-        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish."
+        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish.",
+        pronunciation: "/ˈola/"
       }
     ];
   }
