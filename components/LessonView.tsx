@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, WifiOff } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -516,10 +516,16 @@ export const LessonView: React.FC<LessonViewProps> = ({
                     {currentExercise.type === 'LISTEN_AND_TYPE' && currentExercise.pronunciation && (
                        <button
                          onClick={() => setShowPronunciation(!showPronunciation)}
-                         className="p-3 bg-gray-100 text-gray-500 rounded-xl hover:bg-gray-200 transition-colors border-2 border-transparent"
-                         title="Show Pronunciation"
+                         className={`
+                           p-3 rounded-xl transition-colors border-2 border-transparent
+                           ${showPronunciation 
+                             ? 'bg-blue-100 text-duo-blue border-blue-200' 
+                             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                           }
+                         `}
+                         title={showPronunciation ? "Hide Pronunciation" : "Show Pronunciation"}
                        >
-                          <Eye size={24} />
+                          {showPronunciation ? <EyeOff size={24} /> : <Eye size={24} />}
                        </button>
                     )}
                    </div>
