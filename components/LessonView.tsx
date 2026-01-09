@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, EyeOff, WifiOff } from 'lucide-react';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, EyeOff, WifiOff, RotateCcw } from 'lucide-react';
 import { generateSpeech, playAudioBuffer } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
@@ -293,6 +293,13 @@ export const LessonView: React.FC<LessonViewProps> = ({
       onLoseHeart();
     }
     // Note: We do NOT increment correctCount
+  };
+  
+  const handleUndo = () => {
+    if (selectedWords.length > 0) {
+      setSelectedWords(prev => prev.slice(0, -1));
+      setStatus('IDLE');
+    }
   };
 
   const handleContinue = () => {
@@ -794,6 +801,18 @@ export const LessonView: React.FC<LessonViewProps> = ({
                    </button>
                )}
              </div>
+           )}
+           
+           {/* Undo Button */}
+           {status === 'WRONG' && ['TRANSLATE_TO_TARGET', 'TRANSLATE_TO_SOURCE', 'LISTEN_AND_TYPE'].includes(currentExercise.type) && selectedWords.length > 0 && (
+              <Button 
+                variant="ghost" 
+                onClick={handleUndo}
+                className="mr-2 !text-duo-red hover:!bg-red-100 !px-3"
+                title="Undo last word and retry"
+              >
+                <RotateCcw size={24} />
+              </Button>
            )}
 
            <Button 
