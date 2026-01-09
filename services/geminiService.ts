@@ -80,6 +80,73 @@ export const generateLessonContent = async (
   }
 };
 
+export const generatePracticeContent = async (
+  language: string,
+  topics: string[],
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+): Promise<Exercise[]> => {
+  const model = "gemini-3-flash-preview";
+  
+  // Create a string of topics to focus on
+  const topicList = topics.join(", ");
+
+  const prompt = `Create a dynamic practice session with 5 language learning exercises for a ${difficulty} level student learning ${language}.
+  The exercises should consist of a random mix of concepts from the following learned topics: ${topicList}.
+
+  The exercises should vary in type:
+  1. TRANSLATE_TO_TARGET
+  2. TRANSLATE_TO_SOURCE
+  3. SELECT_MEANING
+  4. LISTEN_AND_TYPE
+  5. FILL_IN_THE_BLANK
+
+  Ensure the content is appropriate for the level. Include an IPA pronunciation guide for the correct answer where applicable.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.INTEGER },
+              type: { type: Type.STRING, enum: [
+                'TRANSLATE_TO_TARGET',
+                'TRANSLATE_TO_SOURCE',
+                'SELECT_MEANING',
+                'LISTEN_AND_TYPE',
+                'FILL_IN_THE_BLANK'
+              ]},
+              prompt: { type: Type.STRING, description: "The question text, sentence to translate, text to be spoken, or sentence with '___' for blank." },
+              correctAnswer: { type: Type.STRING, description: "The exact correct answer string" },
+              options: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING },
+                description: "Array of words for the word bank or multiple choice options. Must include the correct words and some wrong ones."
+              },
+              translation: { type: Type.STRING, description: "English translation of the prompt/answer for context" },
+              explanation: { type: Type.STRING, description: "Brief grammar or vocabulary explanation for the correct answer." },
+              pronunciation: { type: Type.STRING, description: "IPA pronunciation guide for the target text." }
+            },
+            required: ["id", "type", "prompt", "correctAnswer", "options", "translation", "explanation"]
+          }
+        }
+      }
+    });
+
+    const data = JSON.parse(response.text || "[]");
+    return data as Exercise[];
+  } catch (error) {
+    console.error("Failed to generate practice:", error);
+    return [];
+  }
+};
+
 function decodeBase64(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;

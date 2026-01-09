@@ -167,6 +167,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
       }
 
       // Special handling for FILL_IN_THE_BLANK input to allow Enter key to submit
+      // Note: ArrowRight is deliberately excluded here so it acts as navigation (cursor) within input
       if (currentExercise.type === 'FILL_IN_THE_BLANK' && e.key === 'Enter') {
           e.preventDefault();
           if (status === 'IDLE' && textInput.trim()) {
@@ -177,27 +178,35 @@ export const LessonView: React.FC<LessonViewProps> = ({
           return;
       }
 
-      // Ignore Enter key if user is typing in a word bank input field
-      if (e.target instanceof HTMLInputElement) {
+      // Ignore keys if user is typing in a word bank input field or other input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
             (e.target as HTMLInputElement).blur();
         }
         return;
       }
 
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
         e.preventDefault();
         if (isLessonComplete) {
            handleFinishLesson();
         } else if (status === 'TIME_UP') {
            onExit();
         } else if (status === 'IDLE') {
-           if (selectedOption || selectedWords.length > 0) {
+           const isFillBlankValid = currentExercise.type === 'FILL_IN_THE_BLANK' && textInput.trim().length > 0;
+           const isSelectionValid = !!selectedOption || selectedWords.length > 0;
+           
+           if (isSelectionValid || isFillBlankValid) {
              handleCheck();
            }
         } else {
            handleContinue();
         }
+      } else if (e.key === 'ArrowLeft') {
+         if (currentExerciseIndex > 0) {
+             e.preventDefault();
+             setCurrentExerciseIndex(prev => prev - 1);
+         }
       } else if (e.key === ' ' && status === 'IDLE') {
         e.preventDefault();
         handlePlayAudio(currentExercise.prompt);
@@ -211,7 +220,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation, showExitModal, textInput]);
+  }, [status, isLessonComplete, selectedOption, selectedWords, currentExercise, showExplanation, showExitModal, textInput, currentExerciseIndex]);
 
   // Handle Lesson Completion Celebration
   useEffect(() => {

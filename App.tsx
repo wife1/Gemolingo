@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Dashboard } from './components/Dashboard';
+import { Dashboard, TOPICS } from './components/Dashboard';
 import { LessonView } from './components/LessonView';
 import { Profile } from './components/Profile';
 import { Shop } from './components/Shop';
 import { AchievementNotification } from './components/AchievementNotification';
 import { UserState, Lesson, SUPPORTED_LANGUAGES, Difficulty, Achievement, LessonResult, LanguageConfig } from './types';
-import { generateLessonContent } from './services/geminiService';
+import { generateLessonContent, generatePracticeContent } from './services/geminiService';
 import { 
   loadUserState, 
   saveUserState, 
@@ -178,6 +178,52 @@ const App: React.FC = () => {
     }
   };
 
+  const handleStartPractice = async () => {
+    const completedIds = userState.completedLessons;
+    if (completedIds.length === 0) {
+        alert("Complete at least one lesson to unlock Quick Practice!");
+        return;
+    }
+    
+    setCurrentScreen('LOADING');
+
+    // Strategy: Prioritize lowest level topics to "focus on areas needing improvement"
+    const candidateTopics = TOPICS.filter(t => completedIds.includes(t.id));
+    
+    // Sort by level ascending (weakest first)
+    candidateTopics.sort((a, b) => {
+        const levelA = userState.topicLevels[a.id] || 0;
+        const levelB = userState.topicLevels[b.id] || 0;
+        return levelA - levelB;
+    });
+
+    // Take top 5 weakest and randomly pick 3 to add variation
+    const pool = candidateTopics.slice(0, 5);
+    const selected = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+    const topicNames = selected.map(t => t.name);
+
+    const langCode = userState.currentLanguage;
+    const allLangs = getAllLanguages();
+    const langName = allLangs.find(l => l.code === langCode)?.name || 'Spanish';
+
+    try {
+        const exercises = await generatePracticeContent(langName, topicNames, userState.difficulty);
+        setCurrentLesson({
+            id: `practice-${Date.now()}`,
+            topicId: 'practice', // Special ID
+            title: 'Quick Practice',
+            description: 'Strengthen your weak spots',
+            exercises,
+            difficulty: userState.difficulty
+        });
+        setCurrentScreen('LESSON');
+    } catch (e) {
+        console.error(e);
+        alert("Failed to generate practice session. Please try again.");
+        setCurrentScreen('DASHBOARD');
+    }
+  };
+
   const handleDownloadLesson = async (topicId: string, topicName: string) => {
     if (isOffline) return;
     
@@ -225,10 +271,11 @@ const App: React.FC = () => {
           newStreak += 1;
       }
 
-      // Update Topic Level
+      // Update Topic Level (only if it's a regular lesson, practice doesn't level up specific topics usually, or we could distribute XP)
       const currentTopicId = currentLesson?.topicId || '';
       const currentLevel = prev.topicLevels?.[currentTopicId] || 0;
-      const newLevel = Math.min(5, currentLevel + 1);
+      // Only increment level for specific topics, not practice sessions
+      const newLevel = (currentTopicId !== 'practice') ? Math.min(5, currentLevel + 1) : 0;
 
       // Analyze metrics for challenges
       const isPerfect = result.mistakes === 0;
@@ -239,13 +286,13 @@ const App: React.FC = () => {
         ...prev,
         xp: prev.xp + result.xp,
         dailyXp: prev.dailyXp + result.xp,
-        completedLessons: [...new Set([...prev.completedLessons, currentTopicId])],
+        completedLessons: (currentTopicId !== 'practice') ? [...new Set([...prev.completedLessons, currentTopicId])] : prev.completedLessons,
         lastActiveDate: today,
         streak: newStreak,
-        topicLevels: {
+        topicLevels: (currentTopicId !== 'practice') ? {
           ...prev.topicLevels,
           [currentTopicId]: newLevel
-        },
+        } : prev.topicLevels,
         perfectLessonCount: isPerfect ? (prev.perfectLessonCount || 0) + 1 : (prev.perfectLessonCount || 0),
         fastLessonCount: isFast ? (prev.fastLessonCount || 0) + 1 : (prev.fastLessonCount || 0)
       };
@@ -343,6 +390,7 @@ const App: React.FC = () => {
         <Dashboard 
           userState={userState} 
           onStartLesson={startLesson} 
+          onStartPractice={handleStartPractice}
           onChangeLanguage={handleChangeLanguage}
           onChangeDifficulty={handleChangeDifficulty}
           onToggleTimer={handleToggleTimer}
@@ -379,7 +427,7 @@ const App: React.FC = () => {
              <Loader2 size={64} />
            </div>
            <h2 className="text-xl font-bold text-gray-600 animate-pulse">
-             {isOffline ? 'Loading lesson from storage...' : `Crafting ${userState.difficulty} lesson...`}
+             {isOffline ? 'Loading lesson from storage...' : (currentLesson?.topicId === 'practice' ? 'Generating practice session...' : `Crafting ${userState.difficulty} lesson...`)}
            </h2>
         </div>
       )}

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info, Dumbbell } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
   onStartLesson: (topicId: string, topicName: string) => void;
+  onStartPractice: () => void;
   onChangeLanguage: (code: string) => void;
   onChangeDifficulty: (diff: Difficulty) => void;
   onToggleTimer: () => void;
@@ -21,7 +22,7 @@ interface DashboardProps {
   onImportLanguages?: (langs: LanguageConfig[]) => void;
 }
 
-const TOPICS = [
+export const TOPICS = [
   { id: 'basics', name: 'Basics', icon: '🥚', color: 'bg-green-500' },
   { id: 'greetings', name: 'Greetings', icon: '👋', color: 'bg-blue-500' },
   { id: 'food', name: 'Food', icon: '🍎', color: 'bg-red-500' },
@@ -227,6 +228,7 @@ const TOPICS = [
 export const Dashboard: React.FC<DashboardProps> = ({
   userState,
   onStartLesson,
+  onStartPractice,
   onChangeLanguage,
   onChangeDifficulty,
   onToggleTimer,
@@ -611,6 +613,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-32">
         {isDefaultView && (
             <div className="space-y-4">
+
+            {/* Quick Practice Button */}
+            {!isOffline && (
+              <button
+                onClick={onStartPractice}
+                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-purple-200 transform transition-all hover:scale-[1.02] active:scale-95 group overflow-hidden relative"
+              >
+                <div className="flex items-center gap-4 relative z-10">
+                   <div className="bg-white/20 p-3 rounded-xl border border-white/20">
+                      <Dumbbell size={24} className="text-white" />
+                   </div>
+                   <div className="text-left">
+                      <div className="font-bold text-lg">Quick Practice</div>
+                      <div className="text-xs text-purple-100 font-bold opacity-90">Review your weak spots</div>
+                   </div>
+                </div>
+                <div className="bg-white text-purple-600 px-4 py-2 rounded-xl font-bold text-sm shadow-sm">
+                   START
+                </div>
+                {/* Decoration */}
+                <div className="absolute -right-4 -bottom-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+              </button>
+            )}
             
             {/* Download All Button */}
             {!isOffline && (
