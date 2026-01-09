@@ -322,6 +322,15 @@ const App: React.FC = () => {
     alert(`Successfully imported ${language.name}!`);
   };
 
+  const handleImportLanguages = (languages: LanguageConfig[]) => {
+    setUserState(prev => ({
+        ...prev,
+        customLanguages: [...(prev.customLanguages || []), ...languages],
+        currentLanguage: languages[languages.length - 1].code
+    }));
+    alert(`Successfully imported ${languages.length} languages!`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {isOffline && currentScreen === 'DASHBOARD' && (
@@ -345,6 +354,7 @@ const App: React.FC = () => {
           downloadingId={downloadingTopic}
           isOffline={isOffline}
           onImportLanguage={handleImportLanguage}
+          onImportLanguages={handleImportLanguages}
         />
       )}
 

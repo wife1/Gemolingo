@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -18,6 +18,7 @@ interface DashboardProps {
   downloadingId: string | null;
   isOffline: boolean;
   onImportLanguage: (lang: LanguageConfig) => void;
+  onImportLanguages?: (langs: LanguageConfig[]) => void;
 }
 
 const TOPICS = [
@@ -76,7 +77,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenShop,
   downloadingId,
   isOffline,
-  onImportLanguage
+  onImportLanguage,
+  onImportLanguages
 }) => {
   const [focusedTopicIndex, setFocusedTopicIndex] = useState(0);
   const topicRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -263,6 +265,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
     reader.readAsText(file);
     // Reset input
+    event.target.value = '';
+  };
+
+  const handleBulkFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const readers: Promise<LanguageConfig | null>[] = Array.from(files).map(file => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target?.result as string);
+                    // Basic validation
+                    if (json.code && json.name && json.flag) {
+                        resolve(json);
+                    } else {
+                        resolve(null);
+                    }
+                } catch {
+                    resolve(null);
+                }
+            };
+            reader.readAsText(file);
+        });
+    });
+
+    Promise.all(readers).then(results => {
+        const validLangs = results.filter((l): l is LanguageConfig => l !== null);
+        
+        // Filter out duplicates that already exist in the app
+        const newLangs = validLangs.filter(l => !allLanguages.some(existing => existing.code === l.code));
+        
+        // Filter out duplicates within the uploaded batch (keep first occurrence)
+        const uniqueNewLangs = newLangs.filter((l, index, self) => 
+            index === self.findIndex((t) => t.code === l.code)
+        );
+
+        if (uniqueNewLangs.length > 0) {
+            if (onImportLanguages) {
+                onImportLanguages(uniqueNewLangs);
+                setShowLanguageSelector(false);
+            } else {
+                // Fallback for safety
+                uniqueNewLangs.forEach(l => onImportLanguage(l));
+                setShowLanguageSelector(false);
+            }
+        } else {
+            if (validLangs.length > 0) {
+                alert("All selected languages already exist!");
+            } else {
+                alert("No valid language configuration files found.");
+            }
+        }
+    });
+    
     event.target.value = '';
   };
 
@@ -710,6 +768,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     >
                         <HelpCircle size={20} />
                     </button>
+                    
+                    {/* New Import All Button */}
+                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-2 border-blue-100 hover:border-duo-blue text-duo-blue rounded-xl cursor-pointer font-bold text-sm transition-colors">
+                        <Files size={16} />
+                        Import All
+                        <input type="file" accept=".json" multiple className="hidden" onChange={handleBulkFileUpload} />
+                    </label>
+
                     <label className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 hover:border-duo-blue text-duo-blue rounded-xl cursor-pointer font-bold text-sm transition-colors">
                         <Upload size={16} />
                         Import
