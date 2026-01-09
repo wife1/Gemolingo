@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info, Dumbbell } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info, Dumbbell, RefreshCw, GripVertical } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -16,6 +16,8 @@ interface DashboardProps {
   onDeleteDownload: (topicId: string) => void;
   onOpenProfile: () => void;
   onOpenShop: () => void;
+  onResetTopic: (topicId: string) => void;
+  onReorderTopics: (newOrder: string[]) => void;
   downloadingId: string | null;
   isOffline: boolean;
   onImportLanguage: (lang: LanguageConfig) => void;
@@ -23,206 +25,206 @@ interface DashboardProps {
 }
 
 export const TOPICS = [
-  { id: 'basics', name: 'Basics', icon: '🥚', color: 'bg-green-500' },
-  { id: 'greetings', name: 'Greetings', icon: '👋', color: 'bg-blue-500' },
-  { id: 'food', name: 'Food', icon: '🍎', color: 'bg-red-500' },
-  { id: 'travel', name: 'Travel', icon: '✈️', color: 'bg-purple-500' },
-  { id: 'family', name: 'Family', icon: '👨‍👩‍👧', color: 'bg-yellow-500' },
-  { id: 'hobbies', name: 'Hobbies', icon: '🎨', color: 'bg-pink-500' },
-  { id: 'work', name: 'Work', icon: '💼', color: 'bg-indigo-500' },
-  { id: 'weather', name: 'Weather', icon: '☀️', color: 'bg-orange-500' },
-  { id: 'emotions', name: 'Emotions', icon: '😊', color: 'bg-teal-500' },
-  { id: 'shopping', name: 'Shopping', icon: '🛍️', color: 'bg-rose-500' },
-  { id: 'animals', name: 'Animals', icon: '🐶', color: 'bg-green-600' },
-  { id: 'home', name: 'Home', icon: '🏠', color: 'bg-orange-600' },
-  { id: 'school', name: 'School', icon: '🏫', color: 'bg-blue-600' },
-  { id: 'health', name: 'Health', icon: '🏥', color: 'bg-red-600' },
-  { id: 'sports', name: 'Sports', icon: '⚽', color: 'bg-yellow-600' },
-  { id: 'nature', name: 'Nature', icon: '🌳', color: 'bg-emerald-600' },
-  { id: 'tech', name: 'Technology', icon: '💻', color: 'bg-indigo-600' },
-  { id: 'time', name: 'Time & Dates', icon: '⏰', color: 'bg-purple-600' },
-  { id: 'culture', name: 'Arts & Culture', icon: '🎭', color: 'bg-pink-600' },
-  { id: 'numbers', name: 'Numbers', icon: '🔢', color: 'bg-cyan-600' },
-  { id: 'fashion', name: 'Fashion', icon: '👗', color: 'bg-pink-500' },
-  { id: 'directions', name: 'Directions', icon: '🗺️', color: 'bg-blue-500' },
-  { id: 'entertainment', name: 'Entertainment', icon: '🎬', color: 'bg-purple-500' },
-  { id: 'government', name: 'Government', icon: '🏛️', color: 'bg-gray-500' },
-  { id: 'environment', name: 'Environment', icon: '♻️', color: 'bg-green-500' },
-  { id: 'science', name: 'Science', icon: '🔬', color: 'bg-indigo-500' },
-  { id: 'history', name: 'History', icon: '📜', color: 'bg-yellow-600' },
-  { id: 'internet', name: 'Internet', icon: '🌐', color: 'bg-cyan-500' },
-  { id: 'emergency', name: 'Emergency', icon: '🚑', color: 'bg-red-600' },
-  { id: 'holidays', name: 'Holidays', icon: '🎉', color: 'bg-orange-500' },
-  { id: 'music', name: 'Music', icon: '🎵', color: 'bg-pink-600' },
-  { id: 'space', name: 'Space', icon: '🚀', color: 'bg-indigo-700' },
-  { id: 'business', name: 'Business', icon: '🤝', color: 'bg-slate-500' },
-  { id: 'cooking', name: 'Cooking', icon: '🍳', color: 'bg-orange-600' },
-  { id: 'social_media', name: 'Social Media', icon: '📱', color: 'bg-blue-400' },
-  { id: 'architecture', name: 'Architecture', icon: '🏗️', color: 'bg-stone-500' },
-  { id: 'literature', name: 'Literature', icon: '📚', color: 'bg-amber-700' },
-  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-red-500' },
-  { id: 'transport', name: 'Transport', icon: '🚌', color: 'bg-yellow-500' },
-  { id: 'relationships', name: 'Relationships', icon: '💘', color: 'bg-rose-500' },
-  { id: 'mythology', name: 'Mythology', icon: '🧜‍♀️', color: 'bg-purple-600' },
-  { id: 'philosophy', name: 'Philosophy', icon: '🧠', color: 'bg-indigo-500' },
-  { id: 'journalism', name: 'Journalism', icon: '📰', color: 'bg-gray-500' },
-  { id: 'gardening', name: 'Gardening', icon: '🌻', color: 'bg-green-500' },
-  { id: 'camping', name: 'Camping', icon: '⛺', color: 'bg-emerald-600' },
-  { id: 'photography', name: 'Photography', icon: '📷', color: 'bg-zinc-500' },
-  { id: 'law', name: 'Law & Justice', icon: '⚖️', color: 'bg-stone-600' },
-  { id: 'astronomy', name: 'Astronomy', icon: '🔭', color: 'bg-blue-800' },
-  { id: 'geography', name: 'Geography', icon: '🌍', color: 'bg-cyan-600' },
-  { id: 'psychology', name: 'Psychology', icon: '🧩', color: 'bg-teal-500' },
-  { id: 'banking', name: 'Banking', icon: '🏦', color: 'bg-emerald-700' },
-  { id: 'real_estate', name: 'Real Estate', icon: '🏘️', color: 'bg-orange-500' },
-  { id: 'automotive', name: 'Automotive', icon: '🚗', color: 'bg-red-600' },
-  { id: 'pets', name: 'Pets', icon: '🐈', color: 'bg-yellow-600' },
-  { id: 'nightlife', name: 'Nightlife', icon: '🍸', color: 'bg-fuchsia-600' },
-  { id: 'volunteering', name: 'Volunteering', icon: '🤝', color: 'bg-rose-500' },
-  { id: 'traditions', name: 'Traditions', icon: '🏮', color: 'bg-red-500' },
-  { id: 'weddings', name: 'Weddings', icon: '💍', color: 'bg-pink-400' },
-  { id: 'childhood', name: 'Childhood', icon: '🧸', color: 'bg-sky-400' },
-  { id: 'retirement', name: 'Retirement', icon: '👴', color: 'bg-slate-500' },
-  { id: 'archaeology', name: 'Archaeology', icon: '🏺', color: 'bg-amber-700' },
-  { id: 'genetics', name: 'Genetics', icon: '🧬', color: 'bg-rose-400' },
-  { id: 'robotics', name: 'Robotics', icon: '🤖', color: 'bg-slate-600' },
-  { id: 'oceanography', name: 'Oceanography', icon: '🌊', color: 'bg-blue-700' },
-  { id: 'geology', name: 'Geology', icon: '🪨', color: 'bg-stone-600' },
-  { id: 'paleontology', name: 'Paleontology', icon: '🦖', color: 'bg-green-800' },
-  { id: 'anthropology', name: 'Anthropology', icon: '🦴', color: 'bg-orange-700' },
-  { id: 'sociology', name: 'Sociology', icon: '👥', color: 'bg-yellow-600' },
-  { id: 'economics', name: 'Economics', icon: '📉', color: 'bg-emerald-600' },
-  { id: 'marketing', name: 'Marketing', icon: '📢', color: 'bg-purple-500' },
-  { id: 'management', name: 'Management', icon: '📋', color: 'bg-blue-500' },
-  { id: 'public_speaking', name: 'Public Speaking', icon: '🎙️', color: 'bg-red-500' },
-  { id: 'debate', name: 'Debate', icon: '🗣️', color: 'bg-orange-500' },
-  { id: 'logic', name: 'Logic', icon: '💡', color: 'bg-yellow-400' },
-  { id: 'ethics', name: 'Ethics', icon: '😇', color: 'bg-indigo-500' },
-  { id: 'poetry', name: 'Poetry', icon: '✒️', color: 'bg-pink-400' },
-  { id: 'theater', name: 'Theater', icon: '🎭', color: 'bg-red-700' },
-  { id: 'cinema', name: 'Film Studies', icon: '🎥', color: 'bg-gray-800' },
-  { id: 'fantasy', name: 'Fantasy', icon: '🐉', color: 'bg-purple-700' },
-  { id: 'scifi', name: 'Sci-Fi', icon: '👽', color: 'bg-green-400' },
-  { id: 'mystery', name: 'Mystery', icon: '🕵️', color: 'bg-slate-700' },
-  { id: 'comedy', name: 'Comedy', icon: '🤡', color: 'bg-yellow-500' },
-  { id: 'painting', name: 'Painting', icon: '🖌️', color: 'bg-orange-400' },
-  { id: 'sculpture', name: 'Sculpture', icon: '🗿', color: 'bg-stone-400' },
-  { id: 'pottery', name: 'Pottery', icon: '🏺', color: 'bg-orange-800' },
-  { id: 'origami', name: 'Origami', icon: '🦢', color: 'bg-pink-200' },
-  { id: 'graphic_design', name: 'Graphic Design', icon: '📐', color: 'bg-indigo-400' },
-  { id: 'coding', name: 'Coding', icon: '👨‍💻', color: 'bg-slate-800' },
-  { id: 'cybersecurity', name: 'Cybersecurity', icon: '🔒', color: 'bg-red-800' },
-  { id: 'ai', name: 'AI', icon: '🧠', color: 'bg-cyan-400' },
-  { id: 'gaming', name: 'Gaming', icon: '🎮', color: 'bg-violet-600' },
-  { id: 'streaming', name: 'Streaming', icon: '📡', color: 'bg-red-600' },
-  { id: 'podcasting', name: 'Podcasting', icon: '🎧', color: 'bg-purple-600' },
-  { id: 'nutrition', name: 'Nutrition', icon: '🥗', color: 'bg-green-400' },
-  { id: 'yoga', name: 'Yoga', icon: '🧘', color: 'bg-teal-400' },
-  { id: 'meditation', name: 'Meditation', icon: '🕉️', color: 'bg-indigo-300' },
-  { id: 'martial_arts', name: 'Martial Arts', icon: '🥋', color: 'bg-stone-800' },
-  { id: 'swimming', name: 'Swimming', icon: '🏊', color: 'bg-cyan-500' },
-  { id: 'running', name: 'Running', icon: '🏃', color: 'bg-orange-500' },
-  { id: 'chess', name: 'Chess', icon: '♟️', color: 'bg-gray-700' },
-  { id: 'board_games', name: 'Board Games', icon: '🎲', color: 'bg-red-400' },
-  { id: 'magic', name: 'Magic', icon: '🎩', color: 'bg-purple-900' },
-  { id: 'knitting', name: 'Knitting', icon: '🧶', color: 'bg-pink-600' },
-  { id: 'woodworking', name: 'Woodworking', icon: '🪚', color: 'bg-amber-800' },
-  { id: 'interior_design', name: 'Interior Design', icon: '🛋️', color: 'bg-rose-300' },
-  { id: 'farming', name: 'Farming', icon: '🚜', color: 'bg-green-700' },
-  { id: 'astrology', name: 'Astrology', icon: '♈', color: 'bg-violet-800' },
-  { id: 'medieval', name: 'Medieval History', icon: '🏰', color: 'bg-slate-500' },
-  { id: 'renaissance', name: 'Renaissance', icon: '🎨', color: 'bg-amber-500' },
-  { id: 'industrial', name: 'Industrial Rev', icon: '🏭', color: 'bg-gray-600' },
-  { id: 'politics', name: 'Politics', icon: '🗳️', color: 'bg-blue-600' },
-  { id: 'human_rights', name: 'Human Rights', icon: '✊', color: 'bg-yellow-500' },
-  { id: 'sustainability', name: 'Sustainability', icon: '🌱', color: 'bg-green-500' },
-  { id: 'renewable_energy', name: 'Renewable Energy', icon: '🔋', color: 'bg-lime-500' },
-  { id: 'zoology', name: 'Zoology', icon: '🦓', color: 'bg-orange-300' },
-  { id: 'botany', name: 'Botany', icon: '🌺', color: 'bg-pink-500' },
-  { id: 'chemistry', name: 'Chemistry', icon: '🧪', color: 'bg-green-400' },
-  { id: 'physics', name: 'Physics', icon: '⚛️', color: 'bg-blue-800' },
-  { id: 'biology', name: 'Biology', icon: '🦠', color: 'bg-emerald-500' },
-  { id: 'algebra', name: 'Algebra', icon: '✖️', color: 'bg-red-500' },
-  { id: 'geometry', name: 'Geometry', icon: '🔺', color: 'bg-blue-400' },
-  { id: 'calculus', name: 'Calculus', icon: '∫', color: 'bg-indigo-600' },
-  { id: 'statistics', name: 'Statistics', icon: '📊', color: 'bg-yellow-600' },
-  { id: 'anatomy', name: 'Anatomy', icon: '🦴', color: 'bg-stone-300' },
-  { id: 'medicine', name: 'Medicine', icon: '💊', color: 'bg-red-400' },
-  { id: 'dentistry', name: 'Dentistry', icon: '🦷', color: 'bg-blue-200' },
-  { id: 'surgery', name: 'Surgery', icon: '😷', color: 'bg-teal-600' },
-  { id: 'pharmacy', name: 'Pharmacy', icon: '⚕️', color: 'bg-green-600' },
-  { id: 'veterinary', name: 'Veterinary', icon: '🐾', color: 'bg-yellow-700' },
-  { id: 'nursing', name: 'Nursing', icon: '🩺', color: 'bg-pink-300' },
-  { id: 'mental_health', name: 'Mental Health', icon: '🧠', color: 'bg-indigo-200' },
-  { id: 'self_care', name: 'Self Care', icon: '🛀', color: 'bg-cyan-200' },
-  { id: 'productivity', name: 'Productivity', icon: '⚡', color: 'bg-yellow-400' },
-  { id: 'investing', name: 'Investing', icon: '💹', color: 'bg-green-700' },
-  { id: 'crypto', name: 'Crypto', icon: '🪙', color: 'bg-orange-400' },
-  { id: 'accounting', name: 'Accounting', icon: '📒', color: 'bg-gray-500' },
-  { id: 'insurance', name: 'Insurance', icon: '🛡️', color: 'bg-blue-700' },
-  { id: 'taxes', name: 'Taxes', icon: '🧾', color: 'bg-red-300' },
-  { id: 'logistics', name: 'Logistics', icon: '🚚', color: 'bg-slate-600' },
-  { id: 'manufacturing', name: 'Manufacturing', icon: '🏭', color: 'bg-gray-700' },
-  { id: 'impressionism', name: 'Impressionism', icon: '🎨', color: 'bg-pink-400' },
-  { id: 'surrealism', name: 'Surrealism', icon: '👁️', color: 'bg-purple-400' },
-  { id: 'calligraphy', name: 'Calligraphy', icon: '🖋️', color: 'bg-stone-700' },
-  { id: 'opera', name: 'Opera', icon: '🎭', color: 'bg-red-800' },
-  { id: 'jazz', name: 'Jazz', icon: '🎷', color: 'bg-amber-700' },
-  { id: 'rock_n_roll', name: 'Rock & Roll', icon: '🎸', color: 'bg-slate-800' },
-  { id: 'hip_hop', name: 'Hip Hop', icon: '🎤', color: 'bg-fuchsia-600' },
-  { id: 'classical_music', name: 'Classical Music', icon: '🎻', color: 'bg-yellow-700' },
-  { id: 'animation', name: 'Animation', icon: '🎞️', color: 'bg-blue-400' },
-  { id: 'filmmaking', name: 'Filmmaking', icon: '🎬', color: 'bg-gray-900' },
-  { id: 'quantum_mechanics', name: 'Quantum Mechanics', icon: '⚛️', color: 'bg-indigo-900' },
-  { id: 'neuroscience', name: 'Neuroscience', icon: '🧠', color: 'bg-pink-600' },
-  { id: 'nanotech', name: 'Nanotech', icon: '🔬', color: 'bg-cyan-700' },
-  { id: 'meteorology', name: 'Meteorology', icon: '🌩️', color: 'bg-blue-600' },
-  { id: 'marine_biology', name: 'Marine Biology', icon: '🐙', color: 'bg-teal-600' },
-  { id: 'entomology', name: 'Entomology', icon: '🐞', color: 'bg-red-500' },
-  { id: 'mycology', name: 'Mycology', icon: '🍄', color: 'bg-amber-600' },
-  { id: 'ornithology', name: 'Ornithology', icon: '🐦', color: 'bg-sky-500' },
-  { id: 'seismology', name: 'Seismology', icon: '🌋', color: 'bg-orange-700' },
-  { id: 'forensics', name: 'Forensics', icon: '🕵️‍♂️', color: 'bg-slate-600' },
-  { id: 'rugby', name: 'Rugby', icon: '🏉', color: 'bg-green-700' },
-  { id: 'cricket', name: 'Cricket', icon: '🏏', color: 'bg-red-700' },
-  { id: 'baseball', name: 'Baseball', icon: '⚾', color: 'bg-blue-700' },
-  { id: 'basketball', name: 'Basketball', icon: '🏀', color: 'bg-orange-600' },
-  { id: 'golf', name: 'Golf', icon: '⛳', color: 'bg-green-500' },
-  { id: 'tennis', name: 'Tennis', icon: '🎾', color: 'bg-yellow-400' },
-  { id: 'boxing', name: 'Boxing', icon: '🥊', color: 'bg-red-600' },
-  { id: 'surfing', name: 'Surfing', icon: '🏄', color: 'bg-cyan-400' },
-  { id: 'skateboarding', name: 'Skateboarding', icon: '🛹', color: 'bg-stone-500' },
-  { id: 'skiing', name: 'Skiing', icon: '🎿', color: 'bg-blue-300' },
-  { id: 'data_science', name: 'Data Science', icon: '📉', color: 'bg-indigo-600' },
-  { id: 'machine_learning', name: 'Machine Learning', icon: '🤖', color: 'bg-emerald-500' },
-  { id: 'cloud_computing', name: 'Cloud Computing', icon: '☁️', color: 'bg-sky-400' },
-  { id: 'web_development', name: 'Web Development', icon: '🌐', color: 'bg-orange-500' },
-  { id: 'mobile_apps', name: 'Mobile Apps', icon: '📱', color: 'bg-purple-500' },
-  { id: 'ux_design', name: 'UX Design', icon: '🖌️', color: 'bg-pink-500' },
-  { id: 'product_mgmt', name: 'Product Mgmt', icon: '📋', color: 'bg-blue-500' },
-  { id: 'sales', name: 'Sales', icon: '🤝', color: 'bg-green-600' },
-  { id: 'negotiation', name: 'Negotiation', icon: '⚖️', color: 'bg-gray-600' },
-  { id: 'leadership', name: 'Leadership', icon: '👔', color: 'bg-slate-700' },
-  { id: 'minimalism', name: 'Minimalism', icon: '🧹', color: 'bg-stone-300' },
-  { id: 'zero_waste', name: 'Zero Waste', icon: '♻️', color: 'bg-green-400' },
-  { id: 'veganism', name: 'Veganism', icon: '🥦', color: 'bg-emerald-400' },
-  { id: 'parenting', name: 'Parenting', icon: '🍼', color: 'bg-yellow-200' },
-  { id: 'elderly_care', name: 'Elderly Care', icon: '👵', color: 'bg-gray-400' },
-  { id: 'home_improvement', name: 'Home Improvement', icon: '🔨', color: 'bg-orange-800' },
-  { id: 'diy', name: 'DIY', icon: '🔧', color: 'bg-slate-500' },
-  { id: 'sewing', name: 'Sewing', icon: '🧵', color: 'bg-pink-300' },
-  { id: 'baking', name: 'Baking', icon: '🧁', color: 'bg-rose-300' },
-  { id: 'wine_tasting', name: 'Wine Tasting', icon: '🍷', color: 'bg-red-900' },
-  { id: 'coffee_culture', name: 'Coffee Culture', icon: '☕', color: 'bg-amber-900' },
-  { id: 'tea_ceremony', name: 'Tea Ceremony', icon: '🍵', color: 'bg-green-800' },
-  { id: 'street_food', name: 'Street Food', icon: '🌮', color: 'bg-orange-500' },
-  { id: 'fine_dining', name: 'Fine Dining', icon: '🍽️', color: 'bg-slate-800' },
-  { id: 'mixology', name: 'Mixology', icon: '🍹', color: 'bg-purple-400' },
-  { id: 'esports', name: 'Esports', icon: '🎮', color: 'bg-violet-600' },
-  { id: 'cosplay', name: 'Cosplay', icon: '🦹', color: 'bg-fuchsia-500' },
-  { id: 'vlogging', name: 'Vlogging', icon: '📹', color: 'bg-red-500' },
-  { id: 'influencing', name: 'Influencing', icon: '🤳', color: 'bg-pink-500' },
-  { id: 'digital_nomad', name: 'Digital Nomad', icon: '🌍', color: 'bg-teal-500' },
+  { id: 'basics', name: 'Basics', icon: '🥚', color: 'bg-green-500', description: 'Master essential words and simple phrases.' },
+  { id: 'greetings', name: 'Greetings', icon: '👋', color: 'bg-blue-500', description: 'Learn to say hello, goodbye, and introduce yourself.' },
+  { id: 'food', name: 'Food', icon: '🍎', color: 'bg-red-500', description: 'Order meals and discuss food preferences.' },
+  { id: 'travel', name: 'Travel', icon: '✈️', color: 'bg-purple-500', description: 'Vocabulary for airports, hotels, and tourism.' },
+  { id: 'family', name: 'Family', icon: '👨‍👩‍👧', color: 'bg-yellow-500', description: 'Talk about family members and relationships.' },
+  { id: 'hobbies', name: 'Hobbies', icon: '🎨', color: 'bg-pink-500', description: 'Discuss your interests and free time activities.' },
+  { id: 'work', name: 'Work', icon: '💼', color: 'bg-indigo-500', description: 'Professional vocabulary for the workplace.' },
+  { id: 'weather', name: 'Weather', icon: '☀️', color: 'bg-orange-500', description: 'Talk about the climate and weather conditions.' },
+  { id: 'emotions', name: 'Emotions', icon: '😊', color: 'bg-teal-500', description: 'Express your feelings and moods.' },
+  { id: 'shopping', name: 'Shopping', icon: '🛍️', color: 'bg-rose-500', description: 'Navigate stores, prices, and products.' },
+  { id: 'animals', name: 'Animals', icon: '🐶', color: 'bg-green-600', description: 'Learn the names of pets and wildlife.' },
+  { id: 'home', name: 'Home', icon: '🏠', color: 'bg-orange-600', description: 'Describe your house and furniture.' },
+  { id: 'school', name: 'School', icon: '🏫', color: 'bg-blue-600', description: 'Classroom vocabulary and subjects.' },
+  { id: 'health', name: 'Health', icon: '🏥', color: 'bg-red-600', description: 'Discuss symptoms and medical care.' },
+  { id: 'sports', name: 'Sports', icon: '⚽', color: 'bg-yellow-600', description: 'Talk about games, teams, and exercise.' },
+  { id: 'nature', name: 'Nature', icon: '🌳', color: 'bg-emerald-600', description: 'Explore the outdoors and environment.' },
+  { id: 'tech', name: 'Technology', icon: '💻', color: 'bg-indigo-600', description: 'Computers, internet, and gadgets.' },
+  { id: 'time', name: 'Time & Dates', icon: '⏰', color: 'bg-purple-600', description: 'Tell time, days, and months.' },
+  { id: 'culture', name: 'Arts & Culture', icon: '🎭', color: 'bg-pink-600', description: 'Art, music, and traditions.' },
+  { id: 'numbers', name: 'Numbers', icon: '🔢', color: 'bg-cyan-600', description: 'Counting and mathematics basics.' },
+  { id: 'fashion', name: 'Fashion', icon: '👗', color: 'bg-pink-500', description: 'Clothing styles and trends.' },
+  { id: 'directions', name: 'Directions', icon: '🗺️', color: 'bg-blue-500', description: 'Ask for and give ways to go.' },
+  { id: 'entertainment', name: 'Entertainment', icon: '🎬', color: 'bg-purple-500', description: 'Movies, TV, and fun activities.' },
+  { id: 'government', name: 'Government', icon: '🏛️', color: 'bg-gray-500', description: 'Politics and civic structures.' },
+  { id: 'environment', name: 'Environment', icon: '♻️', color: 'bg-green-500', description: 'Sustainability and nature.' },
+  { id: 'science', name: 'Science', icon: '🔬', color: 'bg-indigo-500', description: 'Scientific concepts and discovery.' },
+  { id: 'history', name: 'History', icon: '📜', color: 'bg-yellow-600', description: 'Past events and eras.' },
+  { id: 'internet', name: 'Internet', icon: '🌐', color: 'bg-cyan-500', description: 'Web browsing and online life.' },
+  { id: 'emergency', name: 'Emergency', icon: '🚑', color: 'bg-red-600', description: 'Urgent situations and help.' },
+  { id: 'holidays', name: 'Holidays', icon: '🎉', color: 'bg-orange-500', description: 'Celebrations and special days.' },
+  { id: 'music', name: 'Music', icon: '🎵', color: 'bg-pink-600', description: 'Instruments and musical styles.' },
+  { id: 'space', name: 'Space', icon: '🚀', color: 'bg-indigo-700', description: 'Planets, stars, and the universe.' },
+  { id: 'business', name: 'Business', icon: '🤝', color: 'bg-slate-500', description: 'Corporate terms and commerce.' },
+  { id: 'cooking', name: 'Cooking', icon: '🍳', color: 'bg-orange-600', description: 'Recipes and kitchen techniques.' },
+  { id: 'social_media', name: 'Social Media', icon: '📱', color: 'bg-blue-400', description: 'Networking and online trends.' },
+  { id: 'architecture', name: 'Architecture', icon: '🏗️', color: 'bg-stone-500', description: 'Buildings and design styles.' },
+  { id: 'literature', name: 'Literature', icon: '📚', color: 'bg-amber-700', description: 'Books, authors, and reading.' },
+  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-red-500', description: 'Workouts and physical health.' },
+  { id: 'transport', name: 'Transport', icon: '🚌', color: 'bg-yellow-500', description: 'Vehicles and public transit.' },
+  { id: 'relationships', name: 'Relationships', icon: '💘', color: 'bg-rose-500', description: 'Love, dating, and friends.' },
+  { id: 'mythology', name: 'Mythology', icon: '🧜‍♀️', color: 'bg-purple-600', description: 'Legends and ancient stories.' },
+  { id: 'philosophy', name: 'Philosophy', icon: '🧠', color: 'bg-indigo-500', description: 'Ideas and critical thinking.' },
+  { id: 'journalism', name: 'Journalism', icon: '📰', color: 'bg-gray-500', description: 'News and reporting.' },
+  { id: 'gardening', name: 'Gardening', icon: '🌻', color: 'bg-green-500', description: 'Plants and growing food.' },
+  { id: 'camping', name: 'Camping', icon: '⛺', color: 'bg-emerald-600', description: 'Outdoor living and survival.' },
+  { id: 'photography', name: 'Photography', icon: '📷', color: 'bg-zinc-500', description: 'Cameras and taking photos.' },
+  { id: 'law', name: 'Law & Justice', icon: '⚖️', color: 'bg-stone-600', description: 'Legal terms and rights.' },
+  { id: 'astronomy', name: 'Astronomy', icon: '🔭', color: 'bg-blue-800', description: 'Stargazing and celestial bodies.' },
+  { id: 'geography', name: 'Geography', icon: '🌍', color: 'bg-cyan-600', description: 'Maps and world regions.' },
+  { id: 'psychology', name: 'Psychology', icon: '🧩', color: 'bg-teal-500', description: 'The mind and behavior.' },
+  { id: 'banking', name: 'Banking', icon: '🏦', color: 'bg-emerald-700', description: 'Money and financial services.' },
+  { id: 'real_estate', name: 'Real Estate', icon: '🏘️', color: 'bg-orange-500', description: 'Buying and selling homes.' },
+  { id: 'automotive', name: 'Automotive', icon: '🚗', color: 'bg-red-600', description: 'Cars and mechanics.' },
+  { id: 'pets', name: 'Pets', icon: '🐈', color: 'bg-yellow-600', description: 'Caring for animal companions.' },
+  { id: 'nightlife', name: 'Nightlife', icon: '🍸', color: 'bg-fuchsia-600', description: 'Parties and evening fun.' },
+  { id: 'volunteering', name: 'Volunteering', icon: '🤝', color: 'bg-rose-500', description: 'Helping others and charity.' },
+  { id: 'traditions', name: 'Traditions', icon: '🏮', color: 'bg-red-500', description: 'Customs and cultural heritage.' },
+  { id: 'weddings', name: 'Weddings', icon: '💍', color: 'bg-pink-400', description: 'Marriage ceremonies.' },
+  { id: 'childhood', name: 'Childhood', icon: '🧸', color: 'bg-sky-400', description: 'Growing up and play.' },
+  { id: 'retirement', name: 'Retirement', icon: '👴', color: 'bg-slate-500', description: 'Life after work.' },
+  { id: 'archaeology', name: 'Archaeology', icon: '🏺', color: 'bg-amber-700', description: 'Ancient history and artifacts.' },
+  { id: 'genetics', name: 'Genetics', icon: '🧬', color: 'bg-rose-400', description: 'DNA and heredity.' },
+  { id: 'robotics', name: 'Robotics', icon: '🤖', color: 'bg-slate-600', description: 'Machines and automation.' },
+  { id: 'oceanography', name: 'Oceanography', icon: '🌊', color: 'bg-blue-700', description: 'Sea life and oceans.' },
+  { id: 'geology', name: 'Geology', icon: '🪨', color: 'bg-stone-600', description: 'Rocks and earth science.' },
+  { id: 'paleontology', name: 'Paleontology', icon: '🦖', color: 'bg-green-800', description: 'Dinosaurs and fossils.' },
+  { id: 'anthropology', name: 'Anthropology', icon: '🦴', color: 'bg-orange-700', description: 'Human societies and cultures.' },
+  { id: 'sociology', name: 'Sociology', icon: '👥', color: 'bg-yellow-600', description: 'Social behavior and groups.' },
+  { id: 'economics', name: 'Economics', icon: '📉', color: 'bg-emerald-600', description: 'Markets and resources.' },
+  { id: 'marketing', name: 'Marketing', icon: '📢', color: 'bg-purple-500', description: 'Advertising and brands.' },
+  { id: 'management', name: 'Management', icon: '📋', color: 'bg-blue-500', description: 'Leading teams and projects.' },
+  { id: 'public_speaking', name: 'Public Speaking', icon: '🎙️', color: 'bg-red-500', description: 'Presentations and speeches.' },
+  { id: 'debate', name: 'Debate', icon: '🗣️', color: 'bg-orange-500', description: 'Arguments and discussions.' },
+  { id: 'logic', name: 'Logic', icon: '💡', color: 'bg-yellow-400', description: 'Reasoning and puzzles.' },
+  { id: 'ethics', name: 'Ethics', icon: '😇', color: 'bg-indigo-500', description: 'Moral values and choices.' },
+  { id: 'poetry', name: 'Poetry', icon: '✒️', color: 'bg-pink-400', description: 'Verses and rhyme.' },
+  { id: 'theater', name: 'Theater', icon: '🎭', color: 'bg-red-700', description: 'Stage plays and drama.' },
+  { id: 'cinema', name: 'Film Studies', icon: '🎥', color: 'bg-gray-800', description: 'Movies and filmmaking.' },
+  { id: 'fantasy', name: 'Fantasy', icon: '🐉', color: 'bg-purple-700', description: 'Magic and imaginary worlds.' },
+  { id: 'scifi', name: 'Sci-Fi', icon: '👽', color: 'bg-green-400', description: 'Future tech and aliens.' },
+  { id: 'mystery', name: 'Mystery', icon: '🕵️', color: 'bg-slate-700', description: 'Secrets and detective work.' },
+  { id: 'comedy', name: 'Comedy', icon: '🤡', color: 'bg-yellow-500', description: 'Humor and jokes.' },
+  { id: 'painting', name: 'Painting', icon: '🖌️', color: 'bg-orange-400', description: 'Visual arts and canvas.' },
+  { id: 'sculpture', name: 'Sculpture', icon: '🗿', color: 'bg-stone-400', description: 'Statues and 3D art.' },
+  { id: 'pottery', name: 'Pottery', icon: '🏺', color: 'bg-orange-800', description: 'Ceramics and clay.' },
+  { id: 'origami', name: 'Origami', icon: '🦢', color: 'bg-pink-200', description: 'Paper folding art.' },
+  { id: 'graphic_design', name: 'Graphic Design', icon: '📐', color: 'bg-indigo-400', description: 'Visual communication.' },
+  { id: 'coding', name: 'Coding', icon: '👨‍💻', color: 'bg-slate-800', description: 'Programming and software.' },
+  { id: 'cybersecurity', name: 'Cybersecurity', icon: '🔒', color: 'bg-red-800', description: 'Online safety and protection.' },
+  { id: 'ai', name: 'AI', icon: '🧠', color: 'bg-cyan-400', description: 'Artificial Intelligence concepts.' },
+  { id: 'gaming', name: 'Gaming', icon: '🎮', color: 'bg-violet-600', description: 'Video games and culture.' },
+  { id: 'streaming', name: 'Streaming', icon: '📡', color: 'bg-red-600', description: 'Live broadcasting online.' },
+  { id: 'podcasting', name: 'Podcasting', icon: '🎧', color: 'bg-purple-600', description: 'Audio content creation.' },
+  { id: 'nutrition', name: 'Nutrition', icon: '🥗', color: 'bg-green-400', description: 'Healthy eating habits.' },
+  { id: 'yoga', name: 'Yoga', icon: '🧘', color: 'bg-teal-400', description: 'Flexibility and mindfulness.' },
+  { id: 'meditation', name: 'Meditation', icon: '🕉️', color: 'bg-indigo-300', description: 'Mental peace and focus.' },
+  { id: 'martial_arts', name: 'Martial Arts', icon: '🥋', color: 'bg-stone-800', description: 'Self-defense techniques.' },
+  { id: 'swimming', name: 'Swimming', icon: '🏊', color: 'bg-cyan-500', description: 'Water sports and safety.' },
+  { id: 'running', name: 'Running', icon: '🏃', color: 'bg-orange-500', description: 'Jogging and racing.' },
+  { id: 'chess', name: 'Chess', icon: '♟️', color: 'bg-gray-700', description: 'Strategy board games.' },
+  { id: 'board_games', name: 'Board Games', icon: '🎲', color: 'bg-red-400', description: 'Tabletop fun and dice.' },
+  { id: 'magic', name: 'Magic', icon: '🎩', color: 'bg-purple-900', description: 'Tricks and illusions.' },
+  { id: 'knitting', name: 'Knitting', icon: '🧶', color: 'bg-pink-600', description: 'Yarn crafts and patterns.' },
+  { id: 'woodworking', name: 'Woodworking', icon: '🪚', color: 'bg-amber-800', description: 'Carpentry and building.' },
+  { id: 'interior_design', name: 'Interior Design', icon: '🛋️', color: 'bg-rose-300', description: 'Decorating spaces.' },
+  { id: 'farming', name: 'Farming', icon: '🚜', color: 'bg-green-700', description: 'Agriculture and crops.' },
+  { id: 'astrology', name: 'Astrology', icon: '♈', color: 'bg-violet-800', description: 'Zodiac signs and stars.' },
+  { id: 'medieval', name: 'Medieval History', icon: '🏰', color: 'bg-slate-500', description: 'Castles and knights.' },
+  { id: 'renaissance', name: 'Renaissance', icon: '🎨', color: 'bg-amber-500', description: 'Artistic rebirth era.' },
+  { id: 'industrial', name: 'Industrial Rev', icon: '🏭', color: 'bg-gray-600', description: 'Factories and steam power.' },
+  { id: 'politics', name: 'Politics', icon: '🗳️', color: 'bg-blue-600', description: 'Government and elections.' },
+  { id: 'human_rights', name: 'Human Rights', icon: '✊', color: 'bg-yellow-500', description: 'Equality and justice.' },
+  { id: 'sustainability', name: 'Sustainability', icon: '🌱', color: 'bg-green-500', description: 'Eco-friendly living.' },
+  { id: 'renewable_energy', name: 'Renewable Energy', icon: '🔋', color: 'bg-lime-500', description: 'Clean power sources.' },
+  { id: 'zoology', name: 'Zoology', icon: '🦓', color: 'bg-orange-300', description: 'Study of animals.' },
+  { id: 'botany', name: 'Botany', icon: '🌺', color: 'bg-pink-500', description: 'Study of plants.' },
+  { id: 'chemistry', name: 'Chemistry', icon: '🧪', color: 'bg-green-400', description: 'Elements and reactions.' },
+  { id: 'physics', name: 'Physics', icon: '⚛️', color: 'bg-blue-800', description: 'Matter and energy.' },
+  { id: 'biology', name: 'Biology', icon: '🦠', color: 'bg-emerald-500', description: 'Life and organisms.' },
+  { id: 'algebra', name: 'Algebra', icon: '✖️', color: 'bg-red-500', description: 'Variables and equations.' },
+  { id: 'geometry', name: 'Geometry', icon: '🔺', color: 'bg-blue-400', description: 'Shapes and spaces.' },
+  { id: 'calculus', name: 'Calculus', icon: '∫', color: 'bg-indigo-600', description: 'Change and motion math.' },
+  { id: 'statistics', name: 'Statistics', icon: '📊', color: 'bg-yellow-600', description: 'Data analysis and probability.' },
+  { id: 'anatomy', name: 'Anatomy', icon: '🦴', color: 'bg-stone-300', description: 'Body structure and organs.' },
+  { id: 'medicine', name: 'Medicine', icon: '💊', color: 'bg-red-400', description: 'Healing and treatments.' },
+  { id: 'dentistry', name: 'Dentistry', icon: '🦷', color: 'bg-blue-200', description: 'Teeth and oral health.' },
+  { id: 'surgery', name: 'Surgery', icon: '😷', color: 'bg-teal-600', description: 'Operations and procedures.' },
+  { id: 'pharmacy', name: 'Pharmacy', icon: '⚕️', color: 'bg-green-600', description: 'Drugs and medications.' },
+  { id: 'veterinary', name: 'Veterinary', icon: '🐾', color: 'bg-yellow-700', description: 'Animal healthcare.' },
+  { id: 'nursing', name: 'Nursing', icon: '🩺', color: 'bg-pink-300', description: 'Patient care and support.' },
+  { id: 'mental_health', name: 'Mental Health', icon: '🧠', color: 'bg-indigo-200', description: 'Emotional well-being.' },
+  { id: 'self_care', name: 'Self Care', icon: '🛀', color: 'bg-cyan-200', description: 'Relaxation and wellness.' },
+  { id: 'productivity', name: 'Productivity', icon: '⚡', color: 'bg-yellow-400', description: 'Efficiency and goals.' },
+  { id: 'investing', name: 'Investing', icon: '💹', color: 'bg-green-700', description: 'Stocks and growth.' },
+  { id: 'crypto', name: 'Crypto', icon: '🪙', color: 'bg-orange-400', description: 'Digital currencies.' },
+  { id: 'accounting', name: 'Accounting', icon: '📒', color: 'bg-gray-500', description: 'Financial records.' },
+  { id: 'insurance', name: 'Insurance', icon: '🛡️', color: 'bg-blue-700', description: 'Risk protection.' },
+  { id: 'taxes', name: 'Taxes', icon: '🧾', color: 'bg-red-300', description: 'Government contributions.' },
+  { id: 'logistics', name: 'Logistics', icon: '🚚', color: 'bg-slate-600', description: 'Supply chain and transport.' },
+  { id: 'manufacturing', name: 'Manufacturing', icon: '🏭', color: 'bg-gray-700', description: 'Production and factories.' },
+  { id: 'impressionism', name: 'Impressionism', icon: '🎨', color: 'bg-pink-400', description: 'Light and color art.' },
+  { id: 'surrealism', name: 'Surrealism', icon: '👁️', color: 'bg-purple-400', description: 'Dreamlike art styles.' },
+  { id: 'calligraphy', name: 'Calligraphy', icon: '🖋️', color: 'bg-stone-700', description: 'Beautiful writing.' },
+  { id: 'opera', name: 'Opera', icon: '🎭', color: 'bg-red-800', description: 'Theatrical singing.' },
+  { id: 'jazz', name: 'Jazz', icon: '🎷', color: 'bg-amber-700', description: 'Swing and improvisation.' },
+  { id: 'rock_n_roll', name: 'Rock & Roll', icon: '🎸', color: 'bg-slate-800', description: 'Electric guitars and beats.' },
+  { id: 'hip_hop', name: 'Hip Hop', icon: '🎤', color: 'bg-fuchsia-600', description: 'Rap and urban culture.' },
+  { id: 'classical_music', name: 'Classical Music', icon: '🎻', color: 'bg-yellow-700', description: 'Orchestras and symphonies.' },
+  { id: 'animation', name: 'Animation', icon: '🎞️', color: 'bg-blue-400', description: 'Cartoons and motion.' },
+  { id: 'filmmaking', name: 'Filmmaking', icon: '🎬', color: 'bg-gray-900', description: 'Directing and editing.' },
+  { id: 'quantum_mechanics', name: 'Quantum Mechanics', icon: '⚛️', color: 'bg-indigo-900', description: 'Subatomic physics.' },
+  { id: 'neuroscience', name: 'Neuroscience', icon: '🧠', color: 'bg-pink-600', description: 'Brain and nervous system.' },
+  { id: 'nanotech', name: 'Nanotech', icon: '🔬', color: 'bg-cyan-700', description: 'Microscopic technology.' },
+  { id: 'meteorology', name: 'Meteorology', icon: '🌩️', color: 'bg-blue-600', description: 'Weather forecasting.' },
+  { id: 'marine_biology', name: 'Marine Biology', icon: '🐙', color: 'bg-teal-600', description: 'Underwater life.' },
+  { id: 'entomology', name: 'Entomology', icon: '🐞', color: 'bg-red-500', description: 'Study of insects.' },
+  { id: 'mycology', name: 'Mycology', icon: '🍄', color: 'bg-amber-600', description: 'Mushrooms and fungi.' },
+  { id: 'ornithology', name: 'Ornithology', icon: '🐦', color: 'bg-sky-500', description: 'Study of birds.' },
+  { id: 'seismology', name: 'Seismology', icon: '🌋', color: 'bg-orange-700', description: 'Earthquakes and volcanoes.' },
+  { id: 'forensics', name: 'Forensics', icon: '🕵️‍♂️', color: 'bg-slate-600', description: 'Crime scene science.' },
+  { id: 'rugby', name: 'Rugby', icon: '🏉', color: 'bg-green-700', description: 'Scrum and tackle sport.' },
+  { id: 'cricket', name: 'Cricket', icon: '🏏', color: 'bg-red-700', description: 'Bat and ball game.' },
+  { id: 'baseball', name: 'Baseball', icon: '⚾', color: 'bg-blue-700', description: 'Pitching and home runs.' },
+  { id: 'basketball', name: 'Basketball', icon: '🏀', color: 'bg-orange-600', description: 'Hoops and dribbling.' },
+  { id: 'golf', name: 'Golf', icon: '⛳', color: 'bg-green-500', description: 'Clubs and courses.' },
+  { id: 'tennis', name: 'Tennis', icon: '🎾', color: 'bg-yellow-400', description: 'Rackets and serves.' },
+  { id: 'boxing', name: 'Boxing', icon: '🥊', color: 'bg-red-600', description: 'Ring fighting sport.' },
+  { id: 'surfing', name: 'Surfing', icon: '🏄', color: 'bg-cyan-400', description: 'Waves and boards.' },
+  { id: 'skateboarding', name: 'Skateboarding', icon: '🛹', color: 'bg-stone-500', description: 'Tricks and ramps.' },
+  { id: 'skiing', name: 'Skiing', icon: '🎿', color: 'bg-blue-300', description: 'Snow slopes and speed.' },
+  { id: 'data_science', name: 'Data Science', icon: '📉', color: 'bg-indigo-600', description: 'Analytics and big data.' },
+  { id: 'machine_learning', name: 'Machine Learning', icon: '🤖', color: 'bg-emerald-500', description: 'Algorithms and training.' },
+  { id: 'cloud_computing', name: 'Cloud Computing', icon: '☁️', color: 'bg-sky-400', description: 'Remote servers and AWS.' },
+  { id: 'web_development', name: 'Web Development', icon: '🌐', color: 'bg-orange-500', description: 'Building websites.' },
+  { id: 'mobile_apps', name: 'Mobile Apps', icon: '📱', color: 'bg-purple-500', description: 'iOS and Android dev.' },
+  { id: 'ux_design', name: 'UX Design', icon: '🖌️', color: 'bg-pink-500', description: 'User experience flow.' },
+  { id: 'product_mgmt', name: 'Product Mgmt', icon: '📋', color: 'bg-blue-500', description: 'Roadmaps and strategy.' },
+  { id: 'sales', name: 'Sales', icon: '🤝', color: 'bg-green-600', description: 'Selling and closing deals.' },
+  { id: 'negotiation', name: 'Negotiation', icon: '⚖️', color: 'bg-gray-600', description: 'Deals and agreements.' },
+  { id: 'leadership', name: 'Leadership', icon: '👔', color: 'bg-slate-700', description: 'Guiding teams.' },
+  { id: 'minimalism', name: 'Minimalism', icon: '🧹', color: 'bg-stone-300', description: 'Living with less.' },
+  { id: 'zero_waste', name: 'Zero Waste', icon: '♻️', color: 'bg-green-400', description: 'Reducing trash.' },
+  { id: 'veganism', name: 'Veganism', icon: '🥦', color: 'bg-emerald-400', description: 'Plant-based lifestyle.' },
+  { id: 'parenting', name: 'Parenting', icon: '🍼', color: 'bg-yellow-200', description: 'Raising children.' },
+  { id: 'elderly_care', name: 'Elderly Care', icon: '👵', color: 'bg-gray-400', description: 'Supporting seniors.' },
+  { id: 'home_improvement', name: 'Home Improvement', icon: '🔨', color: 'bg-orange-800', description: 'Renovating your space.' },
+  { id: 'diy', name: 'DIY', icon: '🔧', color: 'bg-slate-500', description: 'Do it yourself projects.' },
+  { id: 'sewing', name: 'Sewing', icon: '🧵', color: 'bg-pink-300', description: 'Stitching and fabric.' },
+  { id: 'baking', name: 'Baking', icon: '🧁', color: 'bg-rose-300', description: 'Pastries and cakes.' },
+  { id: 'wine_tasting', name: 'Wine Tasting', icon: '🍷', color: 'bg-red-900', description: 'Vineyards and flavors.' },
+  { id: 'coffee_culture', name: 'Coffee Culture', icon: '☕', color: 'bg-amber-900', description: 'Beans and brewing.' },
+  { id: 'tea_ceremony', name: 'Tea Ceremony', icon: '🍵', color: 'bg-green-800', description: 'Matcha and rituals.' },
+  { id: 'street_food', name: 'Street Food', icon: '🌮', color: 'bg-orange-500', description: 'Local quick bites.' },
+  { id: 'fine_dining', name: 'Fine Dining', icon: '🍽️', color: 'bg-slate-800', description: 'Luxury meals.' },
+  { id: 'mixology', name: 'Mixology', icon: '🍹', color: 'bg-purple-400', description: 'Cocktails and drinks.' },
+  { id: 'esports', name: 'Esports', icon: '🎮', color: 'bg-violet-600', description: 'Competitive gaming.' },
+  { id: 'cosplay', name: 'Cosplay', icon: '🦹', color: 'bg-fuchsia-500', description: 'Costume play.' },
+  { id: 'vlogging', name: 'Vlogging', icon: '📹', color: 'bg-red-500', description: 'Video blogging.' },
+  { id: 'influencing', name: 'Influencing', icon: '🤳', color: 'bg-pink-500', description: 'Social media fame.' },
+  { id: 'digital_nomad', name: 'Digital Nomad', icon: '🌍', color: 'bg-teal-500', description: 'Working while traveling.' },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -237,6 +239,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteDownload,
   onOpenProfile,
   onOpenShop,
+  onResetTopic,
+  onReorderTopics,
   downloadingId,
   isOffline,
   onImportLanguage,
@@ -253,14 +257,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{current: number, total: number} | null>(null);
 
+  // Context Menu State
+  const [resetMenuTopic, setResetMenuTopic] = useState<{id: string, name: string} | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Drag and Drop State
+  const [draggedTopicId, setDraggedTopicId] = useState<string | null>(null);
+
   // Filtering and Sorting State
   const [filter, setFilter] = useState<'ALL' | 'IN_PROGRESS' | 'MASTERED'>('ALL');
   const [sort, setSort] = useState<'DEFAULT' | 'NAME' | 'LEVEL'>('DEFAULT');
 
-  // Pre-calculate status for all topics based on original order to preserve unlock logic
-  const topicsWithMeta = TOPICS.map((topic, index) => {
+  // Compute Base Ordered Topics
+  const getOrderedTopics = () => {
+      // If no custom order, return default TOPICS
+      if (!userState.topicOrder || userState.topicOrder.length === 0) return TOPICS;
+
+      const orderMap = new Map<string, number>();
+      userState.topicOrder.forEach((id, index) => orderMap.set(id, index));
+
+      const sorted = [...TOPICS].sort((a, b) => {
+          const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+          const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+          return indexA - indexB;
+      });
+      return sorted;
+  };
+
+  const baseTopics = getOrderedTopics();
+
+  // Pre-calculate status for all topics based on the CURRENT ORDER (path order) to preserve unlock logic
+  const topicsWithMeta = baseTopics.map((topic, index) => {
      // Unlock logic: First item is unlocked, or if previous topic has at least level 1
-     const prevTopic = index > 0 ? TOPICS[index - 1] : null;
+     const prevTopic = index > 0 ? baseTopics[index - 1] : null;
      const prevLevelRaw = prevTopic && userState.topicLevels ? userState.topicLevels[prevTopic.id] : undefined;
      const prevLevelVal: number = typeof prevLevelRaw === 'number' ? prevLevelRaw : 0;
      const isPrevCompleted = prevTopic ? userState.completedLessons.includes(prevTopic.id) : false;
@@ -302,11 +331,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // On mount, auto-focus the first incomplete lesson (only in default view)
   useEffect(() => {
     if (isDefaultView) {
-        const firstUnfinished = TOPICS.findIndex(t => !userState.completedLessons.includes(t.id));
+        const firstUnfinished = baseTopics.findIndex(t => !userState.completedLessons.includes(t.id));
         if (firstUnfinished !== -1) {
             setFocusedTopicIndex(firstUnfinished);
         } else {
-            setFocusedTopicIndex(TOPICS.length - 1);
+            setFocusedTopicIndex(baseTopics.length - 1);
         }
     }
   }, []); // Only on mount
@@ -327,7 +356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         e.preventDefault();
         setFocusedTopicIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress || showAbout) return;
+        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress || showAbout || resetMenuTopic) return;
         e.preventDefault();
         const topic = displayedTopics[focusedTopicIndex];
         if (topic) {
@@ -338,7 +367,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress, showAbout]);
+  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress, showAbout, resetMenuTopic]);
 
   // Auto-scroll to focused topic
   useEffect(() => {
@@ -396,6 +425,79 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     setBulkProgress(null);
   };
+
+  const handleContextMenu = (e: React.MouseEvent, topic: {id: string, name: string}) => {
+    e.preventDefault();
+    setResetMenuTopic(topic);
+  };
+
+  const startLongPress = (topic: {id: string, name: string}) => {
+    longPressTimer.current = setTimeout(() => {
+      setResetMenuTopic(topic);
+    }, 800); // 800ms for long press
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleResetConfirm = () => {
+    if (resetMenuTopic) {
+        onResetTopic(resetMenuTopic.id);
+        setResetMenuTopic(null);
+    }
+  };
+
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, topicId: string) => {
+    if (!isDefaultView) {
+        e.preventDefault();
+        return;
+    }
+    setDraggedTopicId(topicId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', topicId);
+    
+    // Set drag image transparent/default
+    if (e.dataTransfer.setDragImage) {
+        // e.dataTransfer.setDragImage(img, 0, 0); 
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetTopicId: string) => {
+    if (!isDefaultView) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetTopicId: string) => {
+    if (!isDefaultView) return;
+    e.preventDefault();
+    
+    const sourceId = draggedTopicId;
+    if (!sourceId || sourceId === targetTopicId) {
+        setDraggedTopicId(null);
+        return;
+    }
+
+    // Reorder logic
+    const currentOrder = baseTopics.map(t => t.id);
+    const sourceIndex = currentOrder.indexOf(sourceId);
+    const targetIndex = currentOrder.indexOf(targetTopicId);
+
+    if (sourceIndex > -1 && targetIndex > -1) {
+        const newOrder = [...currentOrder];
+        newOrder.splice(sourceIndex, 1);
+        newOrder.splice(targetIndex, 0, sourceId);
+        onReorderTopics(newOrder);
+    }
+    
+    setDraggedTopicId(null);
+  };
+
 
   const totalCrowns = (Object.values(userState.topicLevels || {}) as number[]).reduce((a: number, b: number) => a + b, 0);
   const maxCrowns = TOPICS.length * 5;
@@ -699,6 +801,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
              const isUnlocked = topic.isUnlocked;
              const level = topic.level;
              const isMastered = topic.isMastered;
+             const isDragging = draggedTopicId === topic.id;
 
              // Zigzag pattern calculation
              const offset = isDefaultView 
@@ -716,9 +819,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
              const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
 
              return (
-               <div key={topic.id} className={`relative group ${offset} transition-transform duration-300`}>
+               <div 
+                  key={topic.id} 
+                  className={`relative group ${offset} transition-transform duration-300 ${isDragging ? 'opacity-50 scale-95' : ''}`}
+                  draggable={isDefaultView}
+                  onDragStart={(e) => handleDragStart(e, topic.id)}
+                  onDragOver={(e) => handleDragOver(e, topic.id)}
+                  onDrop={(e) => handleDrop(e, topic.id)}
+               >
+                 {/* Tooltip */}
+                 <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-48 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover:translate-y-0 hidden sm:block">
+                    <div className="bg-gray-800 text-white text-xs p-3 rounded-xl shadow-xl text-center relative border border-gray-700">
+                        <p className="font-bold mb-1 text-sm text-yellow-400">{topic.name}</p>
+                        <p className="text-gray-300 leading-tight">{topic.description}</p>
+                        {/* Triangle */}
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-gray-800"></div>
+                    </div>
+                 </div>
+
                  {/* Progress Ring Wrapper */}
                  <div className="relative flex items-center justify-center">
+                    {/* Drag Handle (Visible only on hover in default view) */}
+                    {isDefaultView && (
+                        <div className="absolute -left-12 top-1/2 -translate-y-1/2 text-gray-300 opacity-0 group-hover:opacity-100 cursor-move transition-opacity p-2">
+                             <GripVertical size={20} />
+                        </div>
+                    )}
+
                     {/* Background Ring */}
                     {isUnlocked && (
                       <svg className="absolute w-24 h-24 -rotate-90 pointer-events-none" style={{ zIndex: 5 }}>
@@ -749,9 +876,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <button
                       ref={el => { topicRefs.current[index] = el; }}
                       onClick={() => onStartLesson(topic.id, topic.name)}
+                      onContextMenu={(e) => handleContextMenu(e, topic)}
+                      onTouchStart={() => startLongPress(topic)}
+                      onTouchEnd={cancelLongPress}
+                      onTouchMove={cancelLongPress}
                       className={`
                         w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-sm transition-all relative z-10
-                        border-b-8 active:border-b-0 active:translate-y-2 focus:outline-none
+                        border-b-8 active:border-b-0 active:translate-y-2 focus:outline-none select-none
                         ${isMastered 
                             ? 'bg-amber-400 border-amber-600 text-white shadow-amber-200'
                             : (isUnlocked 
@@ -835,6 +966,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <Trophy size={28} />
         </button>
       </div>
+
+      {/* Reset Menu Modal */}
+      {resetMenuTopic && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+             <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                <div className="flex items-center gap-3 mb-4 text-gray-800">
+                   <div className="bg-gray-100 p-3 rounded-full text-gray-600">
+                      <RefreshCw size={24} />
+                   </div>
+                   <h3 className="text-xl font-bold">Manage Topic</h3>
+                </div>
+                
+                <div className="text-center mb-6">
+                    <div className="text-4xl mb-2">{TOPICS.find(t => t.id === resetMenuTopic.id)?.icon}</div>
+                    <div className="font-bold text-lg text-gray-800">{resetMenuTopic.name}</div>
+                    <div className="text-sm text-gray-500">Current Level: {userState.topicLevels?.[resetMenuTopic.id] || 0}</div>
+                </div>
+
+                <div className="space-y-3">
+                   <Button 
+                     variant="danger" 
+                     fullWidth 
+                     onClick={handleResetConfirm}
+                     className="flex items-center justify-center gap-2"
+                   >
+                     <RefreshCw size={16} /> Reset Progress
+                   </Button>
+                   <Button 
+                     variant="ghost" 
+                     fullWidth 
+                     onClick={() => setResetMenuTopic(null)}
+                   >
+                     Cancel
+                   </Button>
+                </div>
+                <div className="text-xs text-center text-gray-400 mt-4">
+                    This will reset your level for this topic to 0.
+                </div>
+             </div>
+          </div>
+      )}
 
       {/* About Modal */}
       {showAbout && (

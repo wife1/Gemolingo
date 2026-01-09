@@ -20,6 +20,7 @@ export const generateLessonContent = async (
   3. SELECT_MEANING: Simple multiple choice for vocabulary.
   4. LISTEN_AND_TYPE: The user listens to a phrase in ${language} and must type it.
   5. FILL_IN_THE_BLANK: A sentence in ${language} with a missing word represented by "___". The user must type the exact missing word.
+  6. CHOOSE_THE_CORRECT_TRANSLATION: The prompt is a sentence in ${language}. Provide 3-4 English sentences as options, one being the correct translation.
   
   Ensure the content is appropriate for the level. Include an IPA pronunciation guide for the correct answer where applicable.
   `;
@@ -41,7 +42,8 @@ export const generateLessonContent = async (
                 'TRANSLATE_TO_SOURCE',
                 'SELECT_MEANING',
                 'LISTEN_AND_TYPE',
-                'FILL_IN_THE_BLANK'
+                'FILL_IN_THE_BLANK',
+                'CHOOSE_THE_CORRECT_TRANSLATION'
               ]},
               prompt: { type: Type.STRING, description: "The question text, sentence to translate, text to be spoken, or sentence with '___' for blank." },
               correctAnswer: { type: Type.STRING, description: "The exact correct answer string" },
@@ -73,8 +75,18 @@ export const generateLessonContent = async (
         correctAnswer: "Hola",
         options: ["Hola", "Adios", "Gato", "Perro"],
         translation: "Hello",
-        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish.",
+        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish. (Fallback Lesson)",
         pronunciation: "/ˈola/"
+      },
+      {
+        id: 2,
+        type: ExerciseType.SELECT_MEANING,
+        prompt: "Cat",
+        correctAnswer: "Gato",
+        options: ["Gato", "Perro", "Casa", "Auto"],
+        translation: "Gato",
+        explanation: "Gato means Cat.",
+        pronunciation: "/ˈgato/"
       }
     ];
   }
@@ -99,6 +111,7 @@ export const generatePracticeContent = async (
   3. SELECT_MEANING
   4. LISTEN_AND_TYPE
   5. FILL_IN_THE_BLANK
+  6. CHOOSE_THE_CORRECT_TRANSLATION
 
   Ensure the content is appropriate for the level. Include an IPA pronunciation guide for the correct answer where applicable.
   `;
@@ -120,7 +133,8 @@ export const generatePracticeContent = async (
                 'TRANSLATE_TO_SOURCE',
                 'SELECT_MEANING',
                 'LISTEN_AND_TYPE',
-                'FILL_IN_THE_BLANK'
+                'FILL_IN_THE_BLANK',
+                'CHOOSE_THE_CORRECT_TRANSLATION'
               ]},
               prompt: { type: Type.STRING, description: "The question text, sentence to translate, text to be spoken, or sentence with '___' for blank." },
               correctAnswer: { type: Type.STRING, description: "The exact correct answer string" },
@@ -143,7 +157,29 @@ export const generatePracticeContent = async (
     return data as Exercise[];
   } catch (error) {
     console.error("Failed to generate practice:", error);
-    return [];
+    // Return fallback to prevent app crash
+    return [
+       {
+          id: 1,
+          type: ExerciseType.TRANSLATE_TO_TARGET,
+          prompt: "Practice (Fallback): Hello",
+          correctAnswer: "Hola",
+          options: ["Hola", "Adios", "Gato", "Perro"],
+          translation: "Hello",
+          explanation: "Fallback exercise due to connection error.",
+          pronunciation: "/ˈola/"
+       },
+       {
+          id: 2,
+          type: ExerciseType.SELECT_MEANING,
+          prompt: "Which of these is 'The Cat'?",
+          correctAnswer: "El Gato",
+          options: ["El Gato", "El Perro", "La Casa", "El Coche"],
+          translation: "The Cat",
+          explanation: "Gato means Cat.",
+          pronunciation: "/el ˈgato/"
+       }
+    ];
   }
 };
 

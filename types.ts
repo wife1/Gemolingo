@@ -5,7 +5,8 @@ export enum ExerciseType {
   TRANSLATE_TO_SOURCE = 'TRANSLATE_TO_SOURCE',
   SELECT_MEANING = 'SELECT_MEANING',
   LISTEN_AND_TYPE = 'LISTEN_AND_TYPE',
-  FILL_IN_THE_BLANK = 'FILL_IN_THE_BLANK'
+  FILL_IN_THE_BLANK = 'FILL_IN_THE_BLANK',
+  CHOOSE_THE_CORRECT_TRANSLATION = 'CHOOSE_THE_CORRECT_TRANSLATION'
 }
 
 export interface Exercise {
@@ -72,6 +73,7 @@ export interface UserState {
   perfectLessonCount: number; // For Challenge Achievements
   fastLessonCount: number;    // For Challenge Achievements
   customLanguages: LanguageConfig[]; // User imported languages
+  topicOrder?: string[]; // Custom order of topics
 }
 
 export type ScreenState = 'DASHBOARD' | 'LESSON' | 'PROFILE' | 'SHOP';

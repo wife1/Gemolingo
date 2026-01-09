@@ -34,7 +34,8 @@ const INITIAL_USER_STATE: UserState = {
   streakFreezeActive: false,
   perfectLessonCount: 0,
   fastLessonCount: 0,
-  customLanguages: []
+  customLanguages: [],
+  topicOrder: []
 };
 
 const App: React.FC = () => {
@@ -64,6 +65,8 @@ const App: React.FC = () => {
     if (typeof stateToUse.fastLessonCount === 'undefined') stateToUse.fastLessonCount = 0;
     // Migration: ensure customLanguages exists
     if (!stateToUse.customLanguages) stateToUse.customLanguages = [];
+    // Migration: ensure topicOrder exists
+    if (!stateToUse.topicOrder) stateToUse.topicOrder = [];
 
     // Date Check for Daily XP, Streak, and Streak Freeze
     const today = new Date().toDateString();
@@ -378,6 +381,25 @@ const App: React.FC = () => {
     alert(`Successfully imported ${languages.length} languages!`);
   };
 
+  const handleResetTopic = (topicId: string) => {
+     setUserState(prev => ({
+        ...prev,
+        topicLevels: {
+            ...prev.topicLevels,
+            [topicId]: 0
+        },
+        // We only remove it if it was marked as completed.
+        completedLessons: prev.completedLessons.filter(id => id !== topicId)
+     }));
+  };
+
+  const handleReorderTopics = (newOrder: string[]) => {
+    setUserState(prev => ({
+        ...prev,
+        topicOrder: newOrder
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {isOffline && currentScreen === 'DASHBOARD' && (
@@ -399,6 +421,8 @@ const App: React.FC = () => {
           onDeleteDownload={handleDeleteDownload}
           onOpenProfile={handleOpenProfile}
           onOpenShop={handleOpenShop}
+          onResetTopic={handleResetTopic}
+          onReorderTopics={handleReorderTopics}
           downloadingId={downloadingTopic}
           isOffline={isOffline}
           onImportLanguage={handleImportLanguage}

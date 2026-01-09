@@ -210,7 +210,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
       } else if (e.key === ' ' && status === 'IDLE') {
         e.preventDefault();
         handlePlayAudio(currentExercise.prompt);
-      } else if (status === 'IDLE' && currentExercise.type === 'SELECT_MEANING' && currentExercise.options) {
+      } else if (status === 'IDLE' && (currentExercise.type === 'SELECT_MEANING' || currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION') && currentExercise.options) {
         const num = parseInt(e.key);
         if (!isNaN(num) && num > 0 && num <= currentExercise.options.length) {
           setSelectedOption(currentExercise.options[num-1]);
@@ -264,7 +264,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const handleCheck = () => {
     let isCorrect = false;
 
-    if (currentExercise.type === 'SELECT_MEANING') {
+    if (currentExercise.type === 'SELECT_MEANING' || currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION') {
       isCorrect = selectedOption === currentExercise.correctAnswer;
     } else if (currentExercise.type === 'FILL_IN_THE_BLANK') {
       isCorrect = textInput.trim().toLowerCase() === currentExercise.correctAnswer.trim().toLowerCase();
@@ -425,20 +425,29 @@ export const LessonView: React.FC<LessonViewProps> = ({
         </h1>
         
         <div className="flex flex-wrap justify-center gap-4 mb-8">
-           <div className="bg-orange-100 p-4 rounded-2xl border-2 border-orange-200 min-w-[120px]">
-              <div className="text-sm font-bold text-orange-400 uppercase">Total XP</div>
+           {/* XP */}
+           <div className="bg-orange-100 p-4 rounded-2xl border-2 border-orange-200 min-w-[100px] shadow-sm">
+              <div className="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">Total XP</div>
               <div className="text-3xl font-black text-orange-500">+{earnedXP}</div>
            </div>
-           <div className="bg-green-100 p-4 rounded-2xl border-2 border-green-200 min-w-[120px]">
-              <div className="text-sm font-bold text-green-400 uppercase">Accuracy</div>
-              <div className="text-3xl font-black text-green-500">
-                {Math.round((correctCount / lesson.exercises.length) * 100)}%
-              </div>
+           
+           {/* Correct */}
+           <div className="bg-green-100 p-4 rounded-2xl border-2 border-green-200 min-w-[100px] shadow-sm">
+              <div className="text-xs font-bold text-green-400 uppercase tracking-wider mb-1">Correct</div>
+              <div className="text-3xl font-black text-green-500">{correctCount}</div>
            </div>
+
+           {/* Mistakes */}
+           <div className="bg-red-100 p-4 rounded-2xl border-2 border-red-200 min-w-[100px] shadow-sm">
+              <div className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Mistakes</div>
+              <div className="text-3xl font-black text-red-500">{mistakes}</div>
+           </div>
+           
+           {/* Speed (if enabled) */}
            {timerEnabled && (
-             <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-200 min-w-[120px] animate-bounce">
-                <div className="text-sm font-bold text-yellow-600 uppercase flex items-center justify-center gap-1">
-                  <Zap size={14} className="fill-current" /> Speed
+             <div className="bg-yellow-100 p-4 rounded-2xl border-2 border-yellow-200 min-w-[100px] animate-bounce shadow-sm">
+                <div className="text-xs font-bold text-yellow-600 uppercase flex items-center justify-center gap-1 mb-1">
+                  <Zap size={12} className="fill-current" /> Speed
                 </div>
                 <div className="text-3xl font-black text-yellow-500">+{speedBonus}</div>
              </div>
@@ -504,6 +513,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
           {currentExercise.type === 'TRANSLATE_TO_SOURCE' && "Translate this sentence"}
           {currentExercise.type === 'LISTEN_AND_TYPE' && "Tap what you hear"}
           {currentExercise.type === 'FILL_IN_THE_BLANK' && "Complete the sentence"}
+          {currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION' && "Choose the correct translation"}
         </h2>
 
         {/* Question Area */}
@@ -512,7 +522,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
              <div className="text-xl font-medium text-gray-600 mb-4">{currentExercise.prompt}</div>
            ) : (
              <div className={`flex gap-4 ${currentExercise.type === 'LISTEN_AND_TYPE' ? 'flex-col items-center' : 'items-start'}`}>
-                {(currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'LISTEN_AND_TYPE' || (!isOffline && currentExercise.type !== 'FILL_IN_THE_BLANK')) && (
+                {(currentExercise.type === 'TRANSLATE_TO_SOURCE' || currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION' || currentExercise.type === 'LISTEN_AND_TYPE' || (!isOffline && currentExercise.type !== 'FILL_IN_THE_BLANK')) && (
                    <div className="flex items-center gap-4">
                      <button 
                       onClick={() => handlePlayAudio(currentExercise.prompt)}
@@ -594,8 +604,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
         {/* Options Area */}
         <div className="space-y-4">
           {/* Multiple Choice */}
-          {currentExercise.type === 'SELECT_MEANING' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(currentExercise.type === 'SELECT_MEANING' || currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION') && (
+            <div className={`grid gap-4 ${currentExercise.type === 'CHOOSE_THE_CORRECT_TRANSLATION' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
               {currentExercise.options?.map((opt, idx) => (
                 <Card 
                   key={idx} 
@@ -647,8 +657,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
                   ))}
                </div>
 
-               {/* Custom Word Input */}
-               {status === 'IDLE' && (
+               {/* Custom Word Input - Only for translation exercises, not listening (as that reveals text) */}
+               {status === 'IDLE' && ['TRANSLATE_TO_TARGET', 'TRANSLATE_TO_SOURCE'].includes(currentExercise.type) && (
                    <div className="mb-4 flex items-center gap-2">
                        <div className="relative flex-1">
                             <input 
@@ -656,10 +666,10 @@ export const LessonView: React.FC<LessonViewProps> = ({
                                 value={customInput}
                                 onChange={(e) => setCustomInput(e.target.value)}
                                 onKeyDown={handleCustomInputKeyDown}
-                                placeholder="Type to add a word..."
+                                placeholder="Add custom word..."
                                 className="w-full pl-4 pr-10 py-2 border-2 border-gray-200 rounded-xl focus:border-duo-blue focus:outline-none transition-colors"
                             />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded pointer-events-none">
                                 ENTER
                             </div>
                        </div>
