@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, backoff = 1000): Promise<T> {
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 5, backoff = 2000): Promise<T> {
   try {
     return await fn();
   } catch (error: any) {
@@ -15,12 +15,16 @@ async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, backoff = 100
 
     const msg = error?.message || JSON.stringify(error);
     const isQuota = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota');
-    const isServer = msg.includes('500') || msg.includes('503') || msg.includes('INTERNAL') || msg.includes('xhr error');
+    const isServer = msg.includes('500') || msg.includes('503') || msg.includes('INTERNAL') || msg.includes('xhr error') || msg.includes('overloaded');
 
     if (isQuota || isServer) {
-         console.warn(`Gemini API Error (Retrying in ${backoff}ms):`, msg);
-         await delay(backoff);
-         return callWithRetry(fn, retries - 1, backoff * 2);
+         // If it's a quota error, wait at least 4 seconds (Gemini Free tier is often 15 RPM, i.e., 1 req/4sec)
+         const waitTime = isQuota ? Math.max(backoff, 4000) : backoff;
+         console.warn(`Gemini API Error (${isQuota ? 'Quota' : 'Server'}). Retrying in ${waitTime}ms...`, msg);
+         
+         await delay(waitTime);
+         // Increase backoff for next attempt
+         return callWithRetry(fn, retries - 1, waitTime * 1.5);
     }
     
     throw error;
