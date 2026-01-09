@@ -1,9 +1,31 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Type, Modality, GenerateContentResponse } from "@google/genai";
 import { Exercise, ExerciseType, Lesson } from "../types";
 
 // Initialize Gemini Client
 // IMPORTANT: process.env.API_KEY is injected by the runtime environment.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 3, backoff = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries === 0) throw error;
+
+    const msg = error?.message || JSON.stringify(error);
+    const isQuota = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota');
+    const isServer = msg.includes('500') || msg.includes('503') || msg.includes('INTERNAL') || msg.includes('xhr error');
+
+    if (isQuota || isServer) {
+         console.warn(`Gemini API Error (Retrying in ${backoff}ms):`, msg);
+         await delay(backoff);
+         return callWithRetry(fn, retries - 1, backoff * 2);
+    }
+    
+    throw error;
+  }
+}
 
 export const generateLessonContent = async (
   language: string,
@@ -26,7 +48,7 @@ export const generateLessonContent = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -60,7 +82,7 @@ export const generateLessonContent = async (
           }
         }
       }
-    });
+    }));
 
     const data = JSON.parse(response.text || "[]");
     return data as Exercise[];
@@ -71,11 +93,11 @@ export const generateLessonContent = async (
       {
         id: 1,
         type: ExerciseType.TRANSLATE_TO_TARGET,
-        prompt: "Hello",
+        prompt: "Hello (Offline/Fallback)",
         correctAnswer: "Hola",
         options: ["Hola", "Adios", "Gato", "Perro"],
         translation: "Hello",
-        explanation: "'Hola' is the standard greeting for 'Hello' in Spanish. (Fallback Lesson)",
+        explanation: "API Unreachable. 'Hola' is the standard greeting for 'Hello' in Spanish.",
         pronunciation: "/ˈola/"
       },
       {
@@ -117,7 +139,7 @@ export const generatePracticeContent = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -151,7 +173,7 @@ export const generatePracticeContent = async (
           }
         }
       }
-    });
+    }));
 
     const data = JSON.parse(response.text || "[]");
     return data as Exercise[];
@@ -217,7 +239,7 @@ export const generateSpeech = async (text: string, language: string): Promise<Au
     // Basic mapping for voice names based on language - imperfect but functional for demo
     let voiceName = 'Puck'; 
 
-    const response = await ai.models.generateContent({
+    const response = await callWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
       config: {
@@ -228,7 +250,7 @@ export const generateSpeech = async (text: string, language: string): Promise<Au
           },
         },
       },
-    });
+    }), 2, 500); // Fewer retries for speech to keep UI responsive
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return null;

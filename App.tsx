@@ -12,7 +12,8 @@ import {
   saveOfflineLesson, 
   getOfflineLesson, 
   getAllOfflineLessons,
-  removeOfflineLesson 
+  removeOfflineLesson,
+  mergeOfflineLessons
 } from './services/storageService';
 import { initializeAchievements, checkAchievements } from './services/achievementService';
 import { Loader2, WifiOff } from 'lucide-react';
@@ -400,6 +401,16 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleImportLessonData = (data: any) => {
+    const merged = mergeOfflineLessons(data);
+    if (merged) {
+        setOfflineLessons(merged);
+        alert("Lessons imported successfully!");
+    } else {
+        alert("Failed to import lessons. Invalid format.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {isOffline && currentScreen === 'DASHBOARD' && (
@@ -427,6 +438,7 @@ const App: React.FC = () => {
           isOffline={isOffline}
           onImportLanguage={handleImportLanguage}
           onImportLanguages={handleImportLanguages}
+          onImportLessonData={handleImportLessonData}
         />
       )}
 

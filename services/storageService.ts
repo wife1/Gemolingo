@@ -70,3 +70,29 @@ export const getAllOfflineLessons = () => {
     return {};
   }
 };
+
+export const mergeOfflineLessons = (newData: any) => {
+  try {
+    const stored = localStorage.getItem(LESSONS_KEY);
+    const currentData = stored ? JSON.parse(stored) : {};
+
+    // Basic validation: Check if newData is an object
+    if (typeof newData !== 'object' || newData === null) return null;
+
+    // Deep merge logic
+    Object.keys(newData).forEach(lang => {
+      if (typeof newData[lang] === 'object') {
+          if (!currentData[lang]) currentData[lang] = {};
+          Object.keys(newData[lang]).forEach(topicId => {
+             currentData[lang][topicId] = newData[lang][topicId];
+          });
+      }
+    });
+
+    localStorage.setItem(LESSONS_KEY, JSON.stringify(currentData));
+    return currentData;
+  } catch (e) {
+    console.error("Failed to merge offline lessons", e);
+    return null;
+  }
+};

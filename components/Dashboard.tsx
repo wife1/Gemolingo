@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info, Dumbbell, RefreshCw, GripVertical } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info, Dumbbell, RefreshCw, GripVertical, Settings } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -22,6 +22,7 @@ interface DashboardProps {
   isOffline: boolean;
   onImportLanguage: (lang: LanguageConfig) => void;
   onImportLanguages?: (langs: LanguageConfig[]) => void;
+  onImportLessonData: (data: any) => void;
 }
 
 export const TOPICS = [
@@ -344,7 +345,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   downloadingId,
   isOffline,
   onImportLanguage,
-  onImportLanguages
+  onImportLanguages,
+  onImportLessonData
 }) => {
   const [focusedTopicIndex, setFocusedTopicIndex] = useState(0);
   const topicRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -352,6 +354,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [languageSearchQuery, setLanguageSearchQuery] = useState('');
   const [showAbout, setShowAbout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Bulk Download State
@@ -457,7 +460,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         e.preventDefault();
         setFocusedTopicIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress || showAbout || resetMenuTopic) return;
+        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress || showAbout || showSettings || resetMenuTopic) return;
         e.preventDefault();
         const topic = displayedTopics[focusedTopicIndex];
         if (topic) {
@@ -468,7 +471,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress, showAbout, resetMenuTopic]);
+  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress, showAbout, showSettings, resetMenuTopic]);
 
   // Auto-scroll to focused topic
   useEffect(() => {
@@ -561,11 +564,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setDraggedTopicId(topicId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', topicId);
-    
-    // Set drag image transparent/default
-    if (e.dataTransfer.setDragImage) {
-        // e.dataTransfer.setDragImage(img, 0, 0); 
-    }
   };
 
   const handleDragOver = (e: React.DragEvent, targetTopicId: string) => {
@@ -688,6 +686,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
     });
     
     event.target.value = '';
+  };
+
+  const handleExportLessons = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(offlineLessons, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "gemolingo_lessons.json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportLessonsFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          try {
+              const json = JSON.parse(e.target?.result as string);
+              onImportLessonData(json);
+              setShowSettings(false);
+          } catch (err) {
+              alert("Error parsing JSON file");
+          }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
   };
 
   return (
@@ -1060,6 +1086,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={onOpenShop}>
           <Store size={28} />
         </button>
+        <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={() => setShowSettings(true)}>
+          <Settings size={28} />
+        </button>
         <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={() => setShowAbout(true)}>
           <Info size={28} />
         </button>
@@ -1154,6 +1183,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               <div className="mt-8">
                 <Button fullWidth onClick={() => setShowAbout(false)}>
+                    Close
+                </Button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+              <button 
+                onClick={() => setShowSettings(false)} 
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-6 text-gray-700">
+                 <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <Settings size={32} />
+                 </div>
+                 <h3 className="text-2xl font-bold text-gray-800">Data Settings</h3>
+              </div>
+              
+              <div className="space-y-4">
+                 <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-100">
+                    <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                        <Download size={18} /> Export Lessons
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-4">
+                        Download all offline lesson data as a JSON file. Useful for backups.
+                    </p>
+                    <Button fullWidth variant="secondary" onClick={handleExportLessons}>
+                        Export Data
+                    </Button>
+                 </div>
+
+                 <div className="bg-green-50 p-4 rounded-xl border-2 border-green-100">
+                    <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">
+                        <Upload size={18} /> Import Lessons
+                    </h4>
+                    <p className="text-sm text-green-700 mb-4">
+                        Restore lesson data from a JSON file. This will merge with your existing data.
+                    </p>
+                    <label className="w-full">
+                        <div className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-2xl text-center border-b-4 border-green-700 active:border-b-0 active:translate-y-1 cursor-pointer transition-all">
+                            Import Data
+                        </div>
+                        <input type="file" accept=".json" className="hidden" onChange={handleImportLessonsFile} />
+                    </label>
+                 </div>
+              </div>
+
+              <div className="mt-8">
+                <Button fullWidth variant="ghost" onClick={() => setShowSettings(false)}>
                     Close
                 </Button>
               </div>
