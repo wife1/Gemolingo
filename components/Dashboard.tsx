@@ -360,6 +360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Bulk Download State
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{current: number, total: number} | null>(null);
+  const cancelDownloadRef = useRef(false);
 
   // Context Menu State
   const [resetMenuTopic, setResetMenuTopic] = useState<{id: string, name: string} | null>(null);
@@ -514,20 +515,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setShowDownloadConfirm(false);
     const toDownload = getUndownloadedTopics();
     setBulkProgress({ current: 0, total: toDownload.length });
+    cancelDownloadRef.current = false; // Reset cancel flag
 
     for (let i = 0; i < toDownload.length; i++) {
+        if (cancelDownloadRef.current) {
+            break; // Stop if cancelled
+        }
+
         const topic = toDownload[i];
         try {
             await onDownload(topic.id, topic.name);
         } catch (e) {
             console.error(`Failed to download ${topic.name}`, e);
         }
-        setBulkProgress({ current: i + 1, total: toDownload.length });
+
+        // Check again before updating state to prevent race conditions or zombie modals
+        if (!cancelDownloadRef.current) {
+            setBulkProgress({ current: i + 1, total: toDownload.length });
+        }
+        
         // Small delay to prevent complete UI lockup and give time for state updates
         await new Promise(r => setTimeout(r, 50));
     }
 
     setBulkProgress(null);
+  };
+
+  const handleCancelBulkDownload = () => {
+      cancelDownloadRef.current = true;
+      setBulkProgress(null);
   };
 
   const handleContextMenu = (e: React.MouseEvent, topic: {id: string, name: string}) => {
@@ -1287,7 +1303,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Bulk Download Progress Modal */}
       {bulkProgress && (
          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-pop-in">
-             <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+             <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center relative">
+                 <button 
+                    onClick={handleCancelBulkDownload}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                 >
+                    <X size={24} />
+                 </button>
                  <div className="mb-6 flex justify-center">
                     <Loader2 size={48} className="text-duo-blue animate-spin" />
                  </div>
