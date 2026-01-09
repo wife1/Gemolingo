@@ -350,6 +350,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const topicRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
   const [showAbout, setShowAbout] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -1233,21 +1234,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Select Language
               </h3>
               <button 
-                onClick={() => setShowLanguageSelector(false)}
+                onClick={() => {
+                  setShowLanguageSelector(false);
+                  setLanguageSearchQuery('');
+                }}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
               >
                 <X size={24} />
               </button>
             </div>
             
+            {/* Search Bar */}
+            <div className="p-4 border-b border-gray-50">
+               <div className="relative">
+                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                 <input 
+                   type="text" 
+                   placeholder="Search languages..." 
+                   value={languageSearchQuery}
+                   onChange={(e) => setLanguageSearchQuery(e.target.value)}
+                   className="w-full bg-gray-100 rounded-xl py-2 pl-9 pr-4 text-gray-700 font-bold focus:outline-none focus:ring-2 focus:ring-gray-200"
+                   autoFocus
+                 />
+               </div>
+            </div>
+            
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">My Courses</div>
-              {allLanguages.map(lang => (
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">All Languages</div>
+              {allLanguages
+                .filter(lang => 
+                  lang.name.toLowerCase().includes(languageSearchQuery.toLowerCase()) || 
+                  lang.code.toLowerCase().includes(languageSearchQuery.toLowerCase())
+                )
+                .map(lang => (
                 <button
                   key={lang.code}
                   onClick={() => {
                     onChangeLanguage(lang.code);
                     setShowLanguageSelector(false);
+                    setLanguageSearchQuery('');
                   }}
                   className={`
                     w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all
@@ -1265,6 +1290,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {userState.currentLanguage === lang.code && <Check size={24} strokeWidth={3} />}
                 </button>
               ))}
+              
+              {allLanguages.filter(lang => 
+                  lang.name.toLowerCase().includes(languageSearchQuery.toLowerCase()) || 
+                  lang.code.toLowerCase().includes(languageSearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-center py-8 text-gray-400 font-bold">
+                      No languages found
+                  </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50">
