@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dashboard, TOPICS } from './components/Dashboard';
+import { Dashboard } from './components/Dashboard';
+import { TOPICS } from './data/topics';
 import { LessonView } from './components/LessonView';
 import { Profile } from './components/Profile';
 import { Shop } from './components/Shop';
