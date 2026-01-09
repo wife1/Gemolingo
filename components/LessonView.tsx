@@ -798,6 +798,13 @@ export const LessonView: React.FC<LessonViewProps> = ({
                         <span className="font-mono">{currentExercise.pronunciation}</span>
                      </div>
                  )}
+                 {/* Explanation for Translation Exercises */}
+                 {['TRANSLATE_TO_TARGET', 'TRANSLATE_TO_SOURCE'].includes(currentExercise.type) && currentExercise.explanation && (
+                     <div className="mt-2 text-duo-red-dark text-sm bg-white/50 p-2 rounded-lg">
+                        <span className="font-bold uppercase text-[10px] tracking-wider block mb-1">Explanation</span>
+                        {currentExercise.explanation}
+                     </div>
+                 )}
                </div>
                {(currentExercise.translation || currentExercise.explanation) && (
                    <button
