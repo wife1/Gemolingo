@@ -99,4 +99,9 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
   { code: 'sv', name: 'Swedish', flag: '🇸🇪' },
   { code: 'el', name: 'Greek', flag: '🇬🇷' },
   { code: 'pl', name: 'Polish', flag: '🇵🇱' },
+  { code: 'vi', name: 'Vietnamese', flag: '🇻🇳' },
+  { code: 'th', name: 'Thai', flag: '🇹🇭' },
+  { code: 'id', name: 'Indonesian', flag: '🇮🇩' },
+  { code: 'uk', name: 'Ukrainian', flag: '🇺🇦' },
+  { code: 'he', name: 'Hebrew', flag: '🇮🇱' },
 ];
