@@ -17,64 +17,72 @@ interface LessonViewProps {
 
 const DEFAULT_TIME_LIMIT = 120; // 2 minutes
 
-// Sound Effect Helpers
-const playSuccessSound = () => {
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    const t = ctx.currentTime;
-    
-    // First note (D5)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(587.33, t); 
-    gain1.gain.setValueAtTime(0.1, t);
-    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-    osc1.start(t);
-    osc1.stop(t + 0.4);
+// --- Sound Effect System ---
+// Use a singleton AudioContext to avoid the "max 6 contexts" browser limit.
+let sharedAudioCtx: AudioContext | null = null;
 
-    // Second note (A5) - Ding!
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, t + 0.1); 
-    gain2.gain.setValueAtTime(0.1, t + 0.1);
-    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    osc2.start(t + 0.1);
-    osc2.stop(t + 0.5);
-  } catch (e) {
-    console.error("Audio play failed", e);
+const getAudioCtx = () => {
+  if (!sharedAudioCtx) {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    if (Ctx) sharedAudioCtx = new Ctx();
   }
+  // Always try to resume if suspended (common browser autoplay policy)
+  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(e => console.error("Audio resume failed", e));
+  }
+  return sharedAudioCtx;
+};
+
+const playSuccessSound = () => {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+
+  // Play a cheerful major chord arpeggio (C - E - G)
+  [523.25, 659.25, 783.99].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const startTime = t + (i * 0.05); // Staggered start
+    
+    // Envelope for a "bell" sound
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+    
+    osc.start(startTime);
+    osc.stop(startTime + 0.6);
+  });
 };
 
 const playErrorSound = () => {
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    const t = ctx.currentTime;
-    
-    // Low pitched buzz/thud
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, t);
-    osc.frequency.linearRampToValueAtTime(100, t + 0.3);
-    gain.gain.setValueAtTime(0.1, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc.start(t);
-    osc.stop(t + 0.3);
-  } catch (e) {
-    console.error("Audio play failed", e);
-  }
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+
+  // Play a descending, dissonant "thud"
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = 'triangle'; // Richer sound for error
+  osc.frequency.setValueAtTime(120, t);
+  osc.frequency.linearRampToValueAtTime(60, t + 0.3); // Pitch drop
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.15, t + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  
+  osc.start(t);
+  osc.stop(t + 0.4);
 };
 
 export const LessonView: React.FC<LessonViewProps> = ({ 
