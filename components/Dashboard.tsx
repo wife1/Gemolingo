@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserState, SUPPORTED_LANGUAGES, Difficulty, Lesson, LanguageConfig } from '../types';
 import { Button } from './UI';
 import { DailyGoalWidget } from './DailyGoalWidget';
-import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files } from 'lucide-react';
+import { Star, Zap, Trophy, Flame, Download, Check, Trash2, Loader2, WifiOff, Globe, Timer, Crown, Store, ChevronDown, Signal, Upload, Filter, ArrowUpDown, HelpCircle, FileJson, X, Languages, Search, AlertTriangle, CloudDownload, Files, Info } from 'lucide-react';
 
 interface DashboardProps {
   userState: UserState;
@@ -136,7 +136,7 @@ const TOPICS = [
   { id: 'human_rights', name: 'Human Rights', icon: '✊', color: 'bg-yellow-500' },
   { id: 'sustainability', name: 'Sustainability', icon: '🌱', color: 'bg-green-500' },
   { id: 'renewable_energy', name: 'Renewable Energy', icon: '🔋', color: 'bg-lime-500' },
-  { id: 'zoology', name: 'Zoology', icon: 'zebra', color: 'bg-orange-300' }, // Replaced emoji with zebra text fallback if needed, but using 🦓
+  { id: 'zoology', name: 'Zoology', icon: '🦓', color: 'bg-orange-300' },
   { id: 'botany', name: 'Botany', icon: '🌺', color: 'bg-pink-500' },
   { id: 'chemistry', name: 'Chemistry', icon: '🧪', color: 'bg-green-400' },
   { id: 'physics', name: 'Physics', icon: '⚛️', color: 'bg-blue-800' },
@@ -184,6 +184,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const topicRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [showImportHelp, setShowImportHelp] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Bulk Download State
@@ -264,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         e.preventDefault();
         setFocusedTopicIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === 'Enter') {
-        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress) return;
+        if (showLanguageSelector || showImportHelp || showDownloadConfirm || bulkProgress || showAbout) return;
         e.preventDefault();
         const topic = displayedTopics[focusedTopicIndex];
         if (topic) {
@@ -275,7 +276,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress]);
+  }, [focusedTopicIndex, onStartLesson, displayedTopics, showLanguageSelector, showImportHelp, showDownloadConfirm, bulkProgress, showAbout]);
 
   // Auto-scroll to focused topic
   useEffect(() => {
@@ -742,10 +743,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={onOpenShop}>
           <Store size={28} />
         </button>
+        <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={() => setShowAbout(true)}>
+          <Info size={28} />
+        </button>
         <button className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" onClick={onOpenProfile}>
           <Trophy size={28} />
         </button>
       </div>
+
+      {/* About Modal */}
+      {showAbout && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-pop-in">
+           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative max-h-[80vh] overflow-y-auto">
+              <button 
+                onClick={() => setShowAbout(false)} 
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-6 text-duo-green">
+                 <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Info size={32} />
+                 </div>
+                 <h3 className="text-2xl font-bold text-gray-800">About Gemolingo</h3>
+              </div>
+              
+              <div className="space-y-4 text-gray-600 leading-relaxed">
+                 <p>
+                    <strong>Gemolingo</strong> is a next-generation language learning app powered by Google's Gemini API.
+                 </p>
+                 
+                 <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-100">
+                    <h4 className="font-bold text-gray-800 mb-2">Key Features:</h4>
+                    <ul className="list-disc pl-4 space-y-1 text-sm">
+                       <li><strong>AI-Generated Lessons:</strong> Infinite, unique content for every topic.</li>
+                       <li><strong>Smart Pronunciation:</strong> Text-to-speech powered by advanced AI models.</li>
+                       <li><strong>Offline Mode:</strong> Download topics to learn anywhere.</li>
+                       <li><strong>Gamification:</strong> Earn XP, maintain streaks, and climb the leaderboard.</li>
+                    </ul>
+                 </div>
+
+                 <p className="text-sm">
+                    Our mission is to make language learning accessible, personalized, and fun using the latest advancements in Artificial Intelligence.
+                 </p>
+                 
+                 <div className="text-center pt-4">
+                     <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Powered By</div>
+                     <div className="font-black text-gray-300 text-xl mt-1">Google Gemini</div>
+                 </div>
+              </div>
+
+              <div className="mt-8">
+                <Button fullWidth onClick={() => setShowAbout(false)}>
+                    Close
+                </Button>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Bulk Download Confirmation Modal */}
       {showDownloadConfirm && (
