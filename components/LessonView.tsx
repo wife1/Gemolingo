@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Exercise, Lesson, LessonResult, ExerciseType } from '../types';
 import { Button, ProgressBar, Card } from './UI';
-import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, EyeOff, WifiOff, RotateCcw } from 'lucide-react';
-import { generateSpeech, playAudioBuffer } from '../services/geminiService';
+import { Heart, Volume2, X, Check, Trophy, Timer, Zap, ArrowLeft, BookOpen, Plus, Ear, Eye, EyeOff, WifiOff, RotateCcw, Loader2 } from 'lucide-react';
+import { generateSpeech, playAudioBuffer, lookupWord } from '../services/geminiService';
 import confetti from 'canvas-confetti';
 
 interface LessonViewProps {
@@ -13,6 +13,15 @@ interface LessonViewProps {
   hearts: number;
   isOffline: boolean;
   timerEnabled?: boolean;
+}
+
+interface WordPopoverState {
+  word: string;
+  translation: string;
+  definition?: string;
+  partOfSpeech?: string;
+  position: { top: number; left: number };
+  loading: boolean;
 }
 
 export const LessonView: React.FC<LessonViewProps> = ({
@@ -33,6 +42,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60); // 60s for speed run
+  
+  // Word Lookup State
+  const [wordPopover, setWordPopover] = useState<WordPopoverState | null>(null);
 
   const currentExercise = lesson.exercises[currentExerciseIndex];
   const progress = ((currentExerciseIndex) / lesson.exercises.length) * 100;
@@ -43,6 +55,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
     setTextInput('');
     setStatus('IDLE');
     setAudioBuffer(null);
+    setWordPopover(null);
 
     // Auto-play audio if applicable
     if (currentExercise.type === ExerciseType.LISTEN_AND_TYPE || currentExercise.type === ExerciseType.TRANSLATE_TO_SOURCE) {
@@ -67,6 +80,17 @@ export const LessonView: React.FC<LessonViewProps> = ({
       return () => clearInterval(interval);
   }, [timerEnabled, timeLeft, onExit]);
 
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wordPopover && !(e.target as HTMLElement).closest('.word-popover') && !(e.target as HTMLElement).closest('.interactive-word')) {
+        setWordPopover(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [wordPopover]);
+
   const handlePlayAudio = async (text: string) => {
     if (isOffline) return;
     
@@ -85,8 +109,67 @@ export const LessonView: React.FC<LessonViewProps> = ({
     setIsAudioLoading(false);
   };
 
+  const handleWordClick = async (e: React.MouseEvent<HTMLSpanElement>, word: string) => {
+    if (status !== 'IDLE' && status !== 'WRONG') return; // Only allow looking up words when idle or reviewing wrong answer
+    if (isOffline) return;
+
+    // Clean word from punctuation
+    const cleanWord = word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+    if (!cleanWord) return;
+
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const containerRect = document.querySelector('.lesson-container')?.getBoundingClientRect() || { top: 0, left: 0 };
+    
+    setWordPopover({
+      word: cleanWord,
+      translation: '',
+      loading: true,
+      position: {
+        top: rect.top - containerRect.top - 10, // Just above the word
+        left: rect.left - containerRect.left + (rect.width / 2)
+      }
+    });
+
+    try {
+      const result = await lookupWord(cleanWord, currentExercise.prompt);
+      if (result) {
+        setWordPopover(prev => prev ? {
+          ...prev,
+          translation: result.translation,
+          definition: result.definition,
+          partOfSpeech: result.partOfSpeech,
+          loading: false
+        } : null);
+      } else {
+         setWordPopover(null); // Failed to load
+      }
+    } catch (err) {
+      setWordPopover(null);
+    }
+  };
+
+  const renderInteractivePrompt = (text: string) => {
+    // If it's a listening exercise, don't show text usually, or show it differently
+    if (currentExercise.type === ExerciseType.LISTEN_AND_TYPE) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1.5 text-xl font-medium text-gray-700 leading-relaxed justify-start">
+        {text.split(' ').map((word, i) => (
+          <span 
+            key={i} 
+            onClick={(e) => handleWordClick(e, word)}
+            className="interactive-word cursor-pointer border-b-2 border-dotted border-gray-300 hover:bg-gray-100 hover:border-duo-blue transition-colors rounded px-0.5"
+          >
+            {word}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   const handleCheck = () => {
     setStatus('CHECKING');
+    setWordPopover(null);
     
     let isCorrect = false;
     const normalize = (s: string) => s.trim().toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
@@ -154,12 +237,12 @@ export const LessonView: React.FC<LessonViewProps> = ({
                           <div className="flex items-center gap-4 mb-8">
                              <button 
                                onClick={() => handlePlayAudio(currentExercise.prompt)}
-                               className="w-12 h-12 bg-duo-blue rounded-2xl flex items-center justify-center text-white shadow-b-4 hover:bg-opacity-90 active:translate-y-1 active:border-b-0"
+                               className="w-12 h-12 flex-shrink-0 bg-duo-blue rounded-2xl flex items-center justify-center text-white shadow-b-4 hover:bg-opacity-90 active:translate-y-1 active:border-b-0"
                              >
                                 {isAudioLoading ? <RotateCcw className="animate-spin" /> : <Volume2 />}
                              </button>
-                             <div className="text-xl font-bold text-gray-700 p-4 border-2 border-gray-200 rounded-2xl relative">
-                                {currentExercise.prompt}
+                             <div className="p-4 border-2 border-gray-200 rounded-2xl relative bg-white w-full">
+                                {renderInteractivePrompt(currentExercise.prompt)}
                                 {/* Speech bubble triangle */}
                                 <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-0 h-0 border-t-[8px] border-t-transparent border-r-[8px] border-r-gray-200 border-b-[8px] border-b-transparent"></div>
                                 <div className="absolute top-1/2 -left-[5px] -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-r-[6px] border-r-white border-b-[6px] border-b-transparent"></div>
@@ -170,7 +253,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                       {currentExercise.type === ExerciseType.SELECT_MEANING && (
                            <div className="mb-8">
                                <h2 className="text-2xl font-bold text-gray-700 mb-2">What does this mean?</h2>
-                               <div className="text-lg text-gray-500">{currentExercise.prompt}</div>
+                               {renderInteractivePrompt(currentExercise.prompt)}
                            </div>
                       )}
 
@@ -235,7 +318,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                                 <Volume2 />
                              </button>
                          )}
-                         <div className="text-lg text-gray-600">{currentExercise.prompt}</div>
+                         {renderInteractivePrompt(currentExercise.prompt)}
                       </div>
 
                       <div className="border-b-2 border-gray-200 min-h-[60px] mb-8 text-xl p-2 flex flex-wrap gap-2 items-center">
@@ -268,7 +351,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-white relative overflow-hidden">
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-white relative overflow-hidden lesson-container">
       {/* Header */}
       <div className="px-4 py-6 flex items-center gap-4">
         <button onClick={onExit} className="text-gray-400 hover:text-gray-600">
@@ -286,8 +369,30 @@ export const LessonView: React.FC<LessonViewProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-32">
+      <div className="flex-1 overflow-y-auto px-4 pb-32 relative">
          {renderExercise()}
+
+         {/* Word Popover */}
+         {wordPopover && (
+            <div 
+              className="word-popover absolute z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-3 min-w-[150px] animate-pop-in transform -translate-x-1/2 -translate-y-full"
+              style={{ top: wordPopover.position.top, left: wordPopover.position.left }}
+            >
+               {wordPopover.loading ? (
+                 <div className="flex items-center justify-center py-2 text-duo-blue">
+                    <Loader2 className="animate-spin" size={20} />
+                 </div>
+               ) : (
+                 <>
+                   <div className="font-bold text-duo-blue mb-1">{wordPopover.translation}</div>
+                   {wordPopover.partOfSpeech && <div className="text-xs text-gray-400 italic mb-1">{wordPopover.partOfSpeech}</div>}
+                   <div className="text-xs text-gray-600 leading-tight">{wordPopover.definition}</div>
+                 </>
+               )}
+               {/* Arrow */}
+               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-white"></div>
+            </div>
+         )}
       </div>
 
       {/* Footer / Feedback Sheet */}

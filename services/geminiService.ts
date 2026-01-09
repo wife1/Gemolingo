@@ -209,6 +209,34 @@ export const generatePracticeContent = async (
   }
 };
 
+export const lookupWord = async (word: string, contextSentence: string) => {
+  const model = "gemini-3-flash-preview";
+  const prompt = `Identify the language of the sentence "${contextSentence}". Then, provide the translation and a very brief definition (max 10 words) for the word "${word}" in that context.`;
+
+  try {
+    const response = await callWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            translation: { type: Type.STRING, description: "The direct translation of the word" },
+            definition: { type: Type.STRING, description: "A very brief definition or grammatical role" },
+            partOfSpeech: { type: Type.STRING, description: "Noun, Verb, Adjective, etc." }
+          }
+        }
+      }
+    }), 2, 1000);
+
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Word lookup failed:", error);
+    return null;
+  }
+};
+
 function decodeBase64(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
