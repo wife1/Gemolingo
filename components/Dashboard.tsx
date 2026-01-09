@@ -928,7 +928,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onDrop={(e) => handleDrop(e, topic.id)}
                >
                  {/* Tooltip */}
-                 <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-48 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover:translate-y-0 hidden sm:block">
+                 <div className="absolute bottom-[110%] mb-2 left-1/2 -translate-x-1/2 w-48 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 transform translate-y-2 group-hover:translate-y-0">
                     <div className="bg-gray-800 text-white text-xs p-3 rounded-xl shadow-xl text-center relative border border-gray-700">
                         <p className="font-bold mb-1 text-sm text-yellow-400">{topic.name}</p>
                         <p className="text-gray-300 leading-tight">{topic.description}</p>
