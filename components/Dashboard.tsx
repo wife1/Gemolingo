@@ -304,7 +304,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleBulkFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    const readers: Promise<LanguageConfig | null>[] = Array.from(files).map(file => {
+    // Explicitly type file as 'any' or 'File' to ensure it's compatible with readAsText which expects Blob.
+    // Array.from on FileList sometimes infers unknown[] in certain TS configs.
+    const readers: Promise<LanguageConfig | null>[] = Array.from(files).map((file: any) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {

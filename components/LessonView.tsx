@@ -43,6 +43,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60); // 60s for speed run
   
+  // Word Bank State for TRANSLATE_TO_TARGET
+  const [selectedWordIndices, setSelectedWordIndices] = useState<number[]>([]);
+
   // Word Lookup State
   const [wordPopover, setWordPopover] = useState<WordPopoverState | null>(null);
 
@@ -53,6 +56,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
     // Reset state for new exercise
     setSelectedOption(null);
     setTextInput('');
+    setSelectedWordIndices([]);
     setStatus('IDLE');
     setAudioBuffer(null);
     setWordPopover(null);
@@ -62,6 +66,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
          handlePlayAudio(currentExercise.prompt);
     }
   }, [currentExerciseIndex, currentExercise]);
+
+  // Sync Word Bank selection to textInput for validation
+  useEffect(() => {
+    if (currentExercise.type === ExerciseType.TRANSLATE_TO_TARGET && currentExercise.options) {
+      const words = selectedWordIndices.map(i => currentExercise.options![i]);
+      setTextInput(words.join(' '));
+    }
+  }, [selectedWordIndices, currentExercise]);
 
   useEffect(() => {
       let interval: any;
@@ -167,6 +179,16 @@ export const LessonView: React.FC<LessonViewProps> = ({
     );
   };
 
+  const handleWordBankSelect = (index: number) => {
+    if (status !== 'IDLE') return;
+    setSelectedWordIndices(prev => [...prev, index]);
+  };
+
+  const handleWordBankDeselect = (indexInSelected: number) => {
+    if (status !== 'IDLE') return;
+    setSelectedWordIndices(prev => prev.filter((_, i) => i !== indexInSelected));
+  };
+
   const handleCheck = () => {
     setStatus('CHECKING');
     setWordPopover(null);
@@ -262,7 +284,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                               <Card 
                                 key={idx}
                                 selected={selectedOption === option}
-                                onClick={() => status !== 'CHECKING' && status !== 'CORRECT' && status !== 'WRONG' && setSelectedOption(option)}
+                                onClick={() => status !== 'IDLE' ? null : setSelectedOption(option)}
                                 className="text-lg font-medium p-4"
                               >
                                   <div className="flex items-center gap-4">
@@ -280,6 +302,51 @@ export const LessonView: React.FC<LessonViewProps> = ({
                   </div>
               );
           
+          case ExerciseType.TRANSLATE_TO_TARGET:
+              return (
+                  <div>
+                      <h2 className="text-xl font-bold text-gray-700 mb-6">Translate this sentence</h2>
+                      
+                      <div className="flex items-center gap-4 mb-8">
+                           {/* Speech bubble or simple text for prompt */}
+                           <div className="p-4 border-2 border-gray-200 rounded-2xl relative bg-white inline-block">
+                              {renderInteractivePrompt(currentExercise.prompt)}
+                              <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-0 h-0 border-t-[8px] border-t-transparent border-r-[8px] border-r-gray-200 border-b-[8px] border-b-transparent"></div>
+                           </div>
+                      </div>
+
+                      {/* Answer Zone - Word Bank Items */}
+                      <div className="bg-transparent border-b-2 border-gray-200 min-h-[60px] mb-8 py-2 flex flex-wrap gap-2 items-center">
+                          {selectedWordIndices.map((originalIndex, i) => (
+                              <button 
+                                  key={`${originalIndex}-${i}`}
+                                  onClick={() => handleWordBankDeselect(i)}
+                                  className="px-4 py-2 bg-white border-2 border-gray-200 border-b-4 active:border-b-2 active:translate-y-[2px] rounded-xl font-bold text-gray-700 shadow-sm hover:bg-red-50 hover:border-red-200 transition-colors"
+                              >
+                                  {currentExercise.options![originalIndex]}
+                              </button>
+                          ))}
+                      </div>
+
+                      {/* Available Options - Word Bank */}
+                      <div className="flex flex-wrap gap-2 justify-center">
+                          {currentExercise.options?.map((option, idx) => {
+                              const isUsed = selectedWordIndices.includes(idx);
+                              return (
+                                  <div key={idx} className={`${isUsed ? 'opacity-0 pointer-events-none' : ''}`}>
+                                       <button 
+                                          onClick={() => handleWordBankSelect(idx)}
+                                          className="px-4 py-2 bg-white border-2 border-gray-200 border-b-4 active:border-b-2 active:translate-y-[2px] rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                                       >
+                                          {option}
+                                       </button>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+              );
+
           case ExerciseType.LISTEN_AND_TYPE:
                return (
                   <div className="flex flex-col items-center justify-center py-8">
@@ -301,12 +368,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
                );
 
           default:
-              // TRANSLATE, FILL_IN_THE_BLANK etc.
+              // TRANSLATE_TO_SOURCE, FILL_IN_THE_BLANK etc.
               return (
                   <div>
                       <h2 className="text-xl font-bold text-gray-700 mb-6">
-                        {currentExercise.type === ExerciseType.TRANSLATE_TO_TARGET ? 'Translate this sentence' : 
-                         currentExercise.type === ExerciseType.FILL_IN_THE_BLANK ? 'Fill in the blank' : 'Translate to English'}
+                        {currentExercise.type === ExerciseType.FILL_IN_THE_BLANK ? 'Fill in the blank' : 'Translate to English'}
                       </h2>
                       
                       <div className="flex items-center gap-4 mb-8">
@@ -422,6 +488,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
                      </div>
                      <div className="flex-1">
                         <div className="text-duo-green font-extrabold text-2xl">Excellent!</div>
+                        
+                        {/* Always show pronunciation if available - reinforces target language */}
+                        {currentExercise.pronunciation && (
+                            <div className="text-duo-green-dark text-lg mt-1 font-serif opacity-90">
+                                {currentExercise.pronunciation}
+                            </div>
+                        )}
+
                         {currentExercise.type === ExerciseType.CHOOSE_THE_CORRECT_TRANSLATION && currentExercise.explanation && (
                             <div className="text-duo-green-dark text-sm mt-1 font-bold">
                                 {currentExercise.explanation}
@@ -444,7 +518,19 @@ export const LessonView: React.FC<LessonViewProps> = ({
                      <div>
                         <div className="text-duo-red font-extrabold text-2xl mb-1">Incorrect</div>
                         <div className="text-duo-red-dark font-bold text-sm">Correct Answer:</div>
-                        <div className="text-gray-700 text-sm mb-2">{currentExercise.correctAnswer}</div>
+                        <div className="text-gray-700 text-sm mb-2 flex flex-wrap gap-2 items-baseline">
+                            <span>{currentExercise.correctAnswer}</span>
+                            
+                             {/* Only show pronunciation next to answer if answer is in target language */}
+                             {(currentExercise.type === ExerciseType.TRANSLATE_TO_TARGET || 
+                              currentExercise.type === ExerciseType.LISTEN_AND_TYPE || 
+                              currentExercise.type === ExerciseType.FILL_IN_THE_BLANK) && 
+                              currentExercise.pronunciation && (
+                                <span className="text-gray-500 font-serif italic text-xs">
+                                    {currentExercise.pronunciation}
+                                </span>
+                            )}
+                        </div>
                         {currentExercise.explanation && (
                              <div className="bg-white/50 p-2 rounded-lg text-sm text-gray-600 border border-duo-red/20">
                                 <strong>Tip:</strong> {currentExercise.explanation}
